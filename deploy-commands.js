@@ -2,6 +2,10 @@ const { REST, Routes, SlashCommandBuilder } = require('discord.js');
 
 const commands = [
   new SlashCommandBuilder()
+    .setName('menu')
+    .setDescription('Open het interactieve menu'),
+
+  new SlashCommandBuilder()
     .setName('ask')
     .setDescription('Stel een vraag aan de bot')
     .addStringOption(option =>
