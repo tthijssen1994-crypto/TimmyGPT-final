@@ -1,30 +1,63 @@
 const { Client, GatewayIntentBits } = require('discord.js');
-const { handleBotLogic } = require('./botLogic');
+const { handleBotLogic, resetMemory } = require('./botLogic');
+const { getBitcoinPrice } = require('./crypto');
 
 const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent
-    ]
+  intents: [GatewayIntentBits.Guilds]
 });
 
-client.once('clientReady', () => {
-    console.log(`Discord bot online als ${client.user.tag}`);
+client.once('ready', () => {
+  console.log(`Discord bot online als ${client.user.tag}`);
 });
 
-client.on('messageCreate', async (message) => {
-    if (message.author.bot) return;
+client.on('interactionCreate', async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
 
-    if (message.mentions.has(client.user)) {
-        const input = message.content.replace(/<@!?\d+>/, '').trim();
-        const user = message.author.username;
+  const user = interaction.user.username;
 
-        await message.channel.sendTyping();
-        const reply = await handleBotLogic(user, input);
+  // 🟢 PING
+  if (interaction.commandName === 'ping') {
+    return interaction.reply('🏓 Pong!');
+  }
 
-        message.reply(reply);
+  // ❓ HELP
+  if (interaction.commandName === 'help') {
+    return interaction.reply(`
+🤖 Commands:
+/ask → stel een vraag
+/price → crypto prijs
+/reset → wis geheugen
+/ping → check bot
+    `);
+  }
+
+  // 🧠 RESET
+  if (interaction.commandName === 'reset') {
+    await resetMemory(user);
+    return interaction.reply("🧠 Memory gereset!");
+  }
+
+  // 💰 PRICE
+  if (interaction.commandName === 'price') {
+    const coin = interaction.options.getString('coin');
+
+    if (coin.toLowerCase().includes("bitcoin")) {
+      const price = await getBitcoinPrice();
+      return interaction.reply(price);
     }
+
+    return interaction.reply("Alleen bitcoin ondersteund (voor nu)");
+  }
+
+  // 💬 ASK
+  if (interaction.commandName === 'ask') {
+    const vraag = interaction.options.getString('vraag');
+
+    await interaction.deferReply(); // loading...
+    const reply = await handleBotLogic(user, vraag);
+
+    return interaction.editReply(reply);
+  }
 });
 
 client.login(process.env.DISCORD_TOKEN);
