@@ -73,6 +73,66 @@ Je bent TimmyGPT.
 
   // 🔎 als AI wil zoeken
   if (msg.tool_calls) {
+  const toolCall = msg.tool_calls[0];
+  const args = JSON.parse(toolCall.function.arguments);
+
+  const result = await searchInternet(args.query);
+
+  const secondResponse = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      ...messages,
+      { role: "user", content: message },
+      msg,
+      {
+        role: "tool",
+        tool_call_id: toolCall.id,
+        content: result
+      }
+    ]
+  });
+
+  const reply = secondResponse.choices[0].message.content;
+
+  await query(
+    "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
+    [user, "assistant", reply]
+  );
+
+  return reply;
+}
+
+// 🔥 FORCE SEARCH ALS AI HET NIET DOET
+if (
+  message.toLowerCase().includes("prijs") ||
+  message.toLowerCase().includes("bitcoin") ||
+  message.toLowerCase().includes("nieuws")
+) {
+  const result = await searchInternet(message);
+
+  const forcedResponse = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      {
+        role: "system",
+        content: "Gebruik deze internet info om de vraag te beantwoorden."
+      },
+      {
+        role: "user",
+        content: message + "\n\n" + result
+      }
+    ]
+  });
+
+  const reply = forcedResponse.choices[0].message.content;
+
+  await query(
+    "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
+    [user, "assistant", reply]
+  );
+
+  return reply;
+}
     const toolCall = msg.tool_calls[0];
     const args = JSON.parse(toolCall.function.arguments);
 
