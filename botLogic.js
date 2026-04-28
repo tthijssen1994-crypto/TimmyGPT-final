@@ -1,21 +1,29 @@
 const OpenAI = require("openai");
 const { query } = require('./database');
 const { searchInternet } = require('./search');
-const { getBitcoinPrice } = require('./crypto'); // 👈 NIEUW
+const { getBitcoinPrice } = require('./crypto');
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// 🧠 RESET MEMORY
+async function resetMemory(user) {
+  await query("DELETE FROM messages WHERE user_id=$1", [user]);
+}
+
+// 🤖 MAIN LOGIC
 async function handleBotLogic(user, message) {
+  const lower = message.toLowerCase();
+
   // sla user message op
   await query(
     "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
     [user, "user", message]
   );
 
-  // 🔥 DIRECTE BITCOIN CHECK (SNELSTE + BESTE)
-  if (message.toLowerCase().includes("bitcoin")) {
+  // 💰 SLIMME BITCOIN CHECK (alleen bij prijs vragen)
+  if (lower.includes("bitcoin") && lower.includes("prijs")) {
     const price = await getBitcoinPrice();
 
     await query(
@@ -26,9 +34,9 @@ async function handleBotLogic(user, message) {
     return price;
   }
 
-  // haal history op
+  // 📚 HISTORY
   const history = await query(
-    "SELECT role, content FROM messages WHERE user_id=$1 ORDER BY id DESC LIMIT 5",
+    "SELECT role, content FROM messages WHERE user_id=$1 ORDER BY id DESC LIMIT 6",
     [user]
   );
 
@@ -44,7 +52,7 @@ async function handleBotLogic(user, message) {
       content: m.content
     }));
 
-  // TOOL
+  // 🔧 TOOL
   const tools = [
     {
       type: "function",
@@ -54,9 +62,7 @@ async function handleBotLogic(user, message) {
         parameters: {
           type: "object",
           properties: {
-            query: {
-              type: "string"
-            }
+            query: { type: "string" }
           },
           required: ["query"]
         }
@@ -64,7 +70,7 @@ async function handleBotLogic(user, message) {
     }
   ];
 
-  // 🔥 eerste call
+  // 🚀 AI CALL
   const firstResponse = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
@@ -73,16 +79,14 @@ async function handleBotLogic(user, message) {
         content: `
 Je bent TimmyGPT.
 
-- Antwoord altijd in het Nederlands
-- Gebruik searchInternet bij actuele info
-- Ga niet over de gebruiker praten tenzij gevraagd
+- Antwoord ALTIJD in het Nederlands
+- Geef duidelijke en directe antwoorden
+- Gebruik searchInternet bij actuele info (prijzen, nieuws, etc)
+- Ga NIET over de gebruiker praten tenzij gevraagd
 `
       },
       ...messages,
-      {
-        role: "user",
-        content: message
-      }
+      { role: "user", content: message }
     ],
     tools,
     tool_choice: "auto"
@@ -92,68 +96,80 @@ Je bent TimmyGPT.
 
   // 🔎 TOOL CALL
   if (msg.tool_calls) {
-    const toolCall = msg.tool_calls[0];
-    const args = JSON.parse(toolCall.function.arguments);
+    try {
+      const toolCall = msg.tool_calls[0];
+      const args = JSON.parse(toolCall.function.arguments);
 
-    const result = await searchInternet(args.query);
+      const result = await searchInternet(args.query);
 
-    const secondResponse = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        ...messages,
-        { role: "user", content: message },
-        msg,
-        {
-          role: "tool",
-          tool_call_id: toolCall.id,
-          content: result
-        }
-      ]
-    });
+      const secondResponse = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          ...messages,
+          { role: "user", content: message },
+          msg,
+          {
+            role: "tool",
+            tool_call_id: toolCall.id,
+            content: result
+          }
+        ]
+      });
 
-    const reply = secondResponse.choices[0].message.content;
+      const reply = secondResponse.choices[0].message.content;
 
-    await query(
-      "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
-      [user, "assistant", reply]
-    );
+      await query(
+        "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
+        [user, "assistant", reply]
+      );
 
-    return reply;
+      return reply;
+
+    } catch (err) {
+      console.error("Tool error:", err);
+    }
   }
 
-  // 🔥 fallback search
+  // 🔥 FALLBACK SEARCH
   if (
-    message.toLowerCase().includes("prijs") ||
-    message.toLowerCase().includes("nieuws")
+    lower.includes("prijs") ||
+    lower.includes("nieuws") ||
+    lower.includes("wie is") ||
+    lower.includes("wat is")
   ) {
-    const result = await searchInternet(message);
+    try {
+      const result = await searchInternet(message);
 
-    const forcedResponse = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: "Gebruik deze internet info om de vraag te beantwoorden."
-        },
-        {
-          role: "user",
-          content: message + "\n\n" + result
-        }
-      ]
-    });
+      const forcedResponse = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "Gebruik deze internet info om de vraag te beantwoorden."
+          },
+          {
+            role: "user",
+            content: message + "\n\n" + result
+          }
+        ]
+      });
 
-    const reply = forcedResponse.choices[0].message.content;
+      const reply = forcedResponse.choices[0].message.content;
 
-    await query(
-      "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
-      [user, "assistant", reply]
-    );
+      await query(
+        "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
+        [user, "assistant", reply]
+      );
 
-    return reply;
+      return reply;
+
+    } catch (err) {
+      console.error("Fallback error:", err);
+    }
   }
 
-  // normaal antwoord
-  const reply = msg.content;
+  // 💬 NORMAAL ANTWOORD
+  const reply = msg.content || "Hmm, daar weet ik even geen antwoord op.";
 
   await query(
     "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
@@ -163,4 +179,4 @@ Je bent TimmyGPT.
   return reply;
 }
 
-module.exports = { handleBotLogic };
+module.exports = { handleBotLogic, resetMemory };

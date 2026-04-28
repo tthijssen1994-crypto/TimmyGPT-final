@@ -1,9 +1,9 @@
-const { 
-  Client, 
-  GatewayIntentBits, 
-  EmbedBuilder, 
-  ActionRowBuilder, 
-  ButtonBuilder, 
+const {
+  Client,
+  GatewayIntentBits,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
   ButtonStyle,
   ModalBuilder,
   TextInputBuilder,
@@ -17,16 +17,23 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
 
-client.once('ready', () => {
-  console.log(`Discord bot online als ${client.user.tag}`);
+client.once('clientReady', () => {
+  console.log(`🚀 Bot online als ${client.user.tag}`);
 });
 
-// 🎛️ MENU
-function mainMenu() {
+// 🎨 UI MENU
+function menuEmbed() {
+  return new EmbedBuilder()
+    .setTitle("🤖 TimmyGPT")
+    .setDescription("Klik op een knop om te beginnen 👇")
+    .setColor(0x5865F2);
+}
+
+function menuButtons() {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setCustomId('ask_modal')
-      .setLabel('💬 Stel vraag')
+      .setCustomId('ask')
+      .setLabel('💬 Vraag')
       .setStyle(ButtonStyle.Primary),
 
     new ButtonBuilder()
@@ -46,24 +53,18 @@ function mainMenu() {
   );
 }
 
+// 🎯 INTERACTIONS
 client.on('interactionCreate', async (interaction) => {
 
   // =====================
-  // SLASH COMMANDS
+  // SLASH COMMAND
   // =====================
   if (interaction.isChatInputCommand()) {
 
-    const user = interaction.user.username;
-
-    if (interaction.commandName === 'help') {
+    if (interaction.commandName === 'menu') {
       return interaction.reply({
-        embeds: [
-          new EmbedBuilder()
-            .setTitle("🤖 TimmyGPT")
-            .setDescription("Gebruik de knoppen hieronder 👇")
-            .setColor(0x5865F2)
-        ],
-        components: [mainMenu()]
+        embeds: [menuEmbed()],
+        components: [menuButtons()]
       });
     }
 
@@ -79,27 +80,29 @@ client.on('interactionCreate', async (interaction) => {
 
     const user = interaction.user.username;
 
-    // 💬 OPEN MODAL
-    if (interaction.customId === 'ask_modal') {
+    // 💬 ASK MODAL
+    if (interaction.customId === 'ask') {
 
       const modal = new ModalBuilder()
         .setCustomId('askModal')
         .setTitle('💬 Stel je vraag');
 
       const input = new TextInputBuilder()
-        .setCustomId('vraagInput')
+        .setCustomId('vraag')
         .setLabel('Wat wil je weten?')
         .setStyle(TextInputStyle.Paragraph)
         .setRequired(true);
 
-      const row = new ActionRowBuilder().addComponents(input);
-      modal.addComponents(row);
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(input)
+      );
 
       return interaction.showModal(modal);
     }
 
     // 💰 PRICE
     if (interaction.customId === 'price') {
+
       const price = await getBitcoinPrice();
 
       return interaction.reply({
@@ -126,7 +129,18 @@ client.on('interactionCreate', async (interaction) => {
     // ❓ HELP
     if (interaction.customId === 'help') {
       return interaction.reply({
-        content: "Klik op 💬 om een vraag te stellen!",
+        embeds: [
+          new EmbedBuilder()
+            .setTitle("❓ Help")
+            .setDescription(`
+Gebruik:
+
+💬 Vraag → stel een vraag
+💰 Bitcoin → prijs
+🧠 Reset → geheugen wissen
+            `)
+            .setColor(0x00AE86)
+        ],
         ephemeral: true
       });
     }
@@ -140,7 +154,7 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.customId === 'askModal') {
 
       const user = interaction.user.username;
-      const vraag = interaction.fields.getTextInputValue('vraagInput');
+      const vraag = interaction.fields.getTextInputValue('vraag');
 
       await interaction.deferReply();
 
@@ -153,7 +167,7 @@ client.on('interactionCreate', async (interaction) => {
             .setDescription(reply)
             .setColor(0x5865F2)
         ],
-        components: [mainMenu()]
+        components: [menuButtons()]
       });
     }
   }
