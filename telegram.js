@@ -21,3 +21,7 @@ bot.command('reset', async (ctx) => {
 
 bot.launch();
 console.log("Telegram bot draait...");
+
+bot.launch({
+  dropPendingUpdates: true
+});
