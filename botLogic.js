@@ -35,8 +35,7 @@ async function handleBotLogic(user, message) {
           type: "object",
           properties: {
             query: {
-              type: "string",
-              description: "De zoekopdracht"
+              type: "string"
             }
           },
           required: ["query"]
@@ -55,8 +54,8 @@ async function handleBotLogic(user, message) {
 Je bent TimmyGPT.
 
 - Antwoord altijd in het Nederlands
-- Gebruik de searchInternet tool bij actuele info (prijzen, nieuws, etc)
-- Ga niet gokken of over de gebruiker praten
+- Gebruik searchInternet bij actuele info
+- Ga niet over de gebruiker praten tenzij gevraagd
 `
       },
       ...messages,
@@ -71,68 +70,8 @@ Je bent TimmyGPT.
 
   const msg = firstResponse.choices[0].message;
 
-  // 🔎 als AI wil zoeken
+  // 🔎 TOOL CALL
   if (msg.tool_calls) {
-  const toolCall = msg.tool_calls[0];
-  const args = JSON.parse(toolCall.function.arguments);
-
-  const result = await searchInternet(args.query);
-
-  const secondResponse = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [
-      ...messages,
-      { role: "user", content: message },
-      msg,
-      {
-        role: "tool",
-        tool_call_id: toolCall.id,
-        content: result
-      }
-    ]
-  });
-
-  const reply = secondResponse.choices[0].message.content;
-
-  await query(
-    "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
-    [user, "assistant", reply]
-  );
-
-  return reply;
-}
-
-// 🔥 FORCE SEARCH ALS AI HET NIET DOET
-if (
-  message.toLowerCase().includes("prijs") ||
-  message.toLowerCase().includes("bitcoin") ||
-  message.toLowerCase().includes("nieuws")
-) {
-  const result = await searchInternet(message);
-
-  const forcedResponse = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [
-      {
-        role: "system",
-        content: "Gebruik deze internet info om de vraag te beantwoorden."
-      },
-      {
-        role: "user",
-        content: message + "\n\n" + result
-      }
-    ]
-  });
-
-  const reply = forcedResponse.choices[0].message.content;
-
-  await query(
-    "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
-    [user, "assistant", reply]
-  );
-
-  return reply;
-}
     const toolCall = msg.tool_calls[0];
     const args = JSON.parse(toolCall.function.arguments);
 
@@ -142,10 +81,7 @@ if (
       model: "gpt-4o-mini",
       messages: [
         ...messages,
-        {
-          role: "user",
-          content: message
-        },
+        { role: "user", content: message },
         msg,
         {
           role: "tool",
@@ -156,6 +92,38 @@ if (
     });
 
     const reply = secondResponse.choices[0].message.content;
+
+    await query(
+      "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
+      [user, "assistant", reply]
+    );
+
+    return reply;
+  }
+
+  // 🔥 FORCE SEARCH fallback
+  if (
+    message.toLowerCase().includes("prijs") ||
+    message.toLowerCase().includes("bitcoin") ||
+    message.toLowerCase().includes("nieuws")
+  ) {
+    const result = await searchInternet(message);
+
+    const forcedResponse = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "Gebruik deze internet info om de vraag te beantwoorden."
+        },
+        {
+          role: "user",
+          content: message + "\n\n" + result
+        }
+      ]
+    });
+
+    const reply = forcedResponse.choices[0].message.content;
 
     await query(
       "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
