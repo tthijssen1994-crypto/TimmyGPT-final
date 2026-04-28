@@ -1,6 +1,7 @@
 const OpenAI = require("openai");
 const { query } = require('./database');
 const { searchInternet } = require('./search');
+const { getBitcoinPrice } = require('./crypto'); // 👈 NIEUW
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -13,6 +14,18 @@ async function handleBotLogic(user, message) {
     [user, "user", message]
   );
 
+  // 🔥 DIRECTE BITCOIN CHECK (SNELSTE + BESTE)
+  if (message.toLowerCase().includes("bitcoin")) {
+    const price = await getBitcoinPrice();
+
+    await query(
+      "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
+      [user, "assistant", price]
+    );
+
+    return price;
+  }
+
   // haal history op
   const history = await query(
     "SELECT role, content FROM messages WHERE user_id=$1 ORDER BY id DESC LIMIT 5",
@@ -20,16 +33,16 @@ async function handleBotLogic(user, message) {
   );
 
   const messages = history.rows
-  .reverse()
-  .filter(m =>
-    m.content &&
-    m.content.length < 300 &&
-    !m.content.toLowerCase().includes("kappa")
-  )
-  .map(m => ({
-    role: m.role,
-    content: m.content
-  }));
+    .reverse()
+    .filter(m =>
+      m.content &&
+      m.content.length < 300 &&
+      !m.content.toLowerCase().includes("kappa")
+    )
+    .map(m => ({
+      role: m.role,
+      content: m.content
+    }));
 
   // TOOL
   const tools = [
@@ -108,10 +121,9 @@ Je bent TimmyGPT.
     return reply;
   }
 
-  // 🔥 FORCE SEARCH fallback
+  // 🔥 fallback search
   if (
     message.toLowerCase().includes("prijs") ||
-    message.toLowerCase().includes("bitcoin") ||
     message.toLowerCase().includes("nieuws")
   ) {
     const result = await searchInternet(message);
