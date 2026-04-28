@@ -5,51 +5,29 @@ const { REST, Routes, SlashCommandBuilder } = require('discord.js');
 const commands = [
   new SlashCommandBuilder()
     .setName('menu')
-    .setDescription('Open het interactieve menu'),
-
-  new SlashCommandBuilder()
-    .setName('ask')
-    .setDescription('Stel een vraag aan de bot')
-    .addStringOption(option =>
-      option.setName('vraag')
-        .setDescription('Je vraag')
-        .setRequired(true)
-    ),
-
-  new SlashCommandBuilder()
-    .setName('price')
-    .setDescription('Bekijk crypto prijs')
-    .addStringOption(option =>
-      option.setName('coin')
-        .setDescription('Bijv: bitcoin')
-        .setRequired(true)
-    ),
-
-  new SlashCommandBuilder()
-    .setName('reset')
-    .setDescription('Reset je geheugen'),
+    .setDescription('Open het menu'),
 
   new SlashCommandBuilder()
     .setName('ping')
-    .setDescription('Check of de bot werkt'),
+    .setDescription('Check bot'),
 
-  new SlashCommandBuilder()
-    .setName('help')
-    .setDescription('Bekijk alle commands')
 ].map(cmd => cmd.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
 (async () => {
   try {
-    console.log('Slash commands registreren...');
+    console.log('⏳ Commands registreren...');
 
     await rest.put(
-      Routes.applicationCommands(process.env.CLIENT_ID), // 👈 BELANGRIJK
+      Routes.applicationGuildCommands(
+        process.env.CLIENT_ID,
+        process.env.GUILD_ID
+      ),
       { body: commands }
     );
 
-    console.log('✅ Commands geregistreerd!');
+    console.log('✅ Commands werken direct!');
   } catch (error) {
     console.error(error);
   }
