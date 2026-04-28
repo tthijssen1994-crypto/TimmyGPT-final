@@ -24,7 +24,7 @@ async function handleBotLogic(user, message) {
     content: m.content
   }));
 
-  // 🧠 TOOL DEFINITIE
+  // TOOL
   const tools = [
     {
       type: "function",
@@ -45,7 +45,7 @@ async function handleBotLogic(user, message) {
     }
   ];
 
-  // 🔥 EERSTE AI CALL (beslist of hij wil zoeken)
+  // 🔥 eerste call
   const firstResponse = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
@@ -55,8 +55,8 @@ async function handleBotLogic(user, message) {
 Je bent TimmyGPT.
 
 - Antwoord altijd in het Nederlands
-- Gebruik de searchInternet tool ALLEEN als je iets niet zeker weet of actuele info nodig hebt
-- Geef duidelijke antwoorden
+- Gebruik de searchInternet tool bij actuele info (prijzen, nieuws, etc)
+- Ga niet gokken of over de gebruiker praten
 `
       },
       ...messages,
@@ -65,19 +65,19 @@ Je bent TimmyGPT.
         content: message
       }
     ],
-    tools
+    tools,
+    tool_choice: "auto"
   });
 
   const msg = firstResponse.choices[0].message;
 
-  // 🔎 ALS AI WIL ZOEKEN
+  // 🔎 als AI wil zoeken
   if (msg.tool_calls) {
     const toolCall = msg.tool_calls[0];
     const args = JSON.parse(toolCall.function.arguments);
 
     const result = await searchInternet(args.query);
 
-    // 🔥 TWEEDE CALL MET RESULTAAT
     const secondResponse = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -105,7 +105,7 @@ Je bent TimmyGPT.
     return reply;
   }
 
-  // 🧠 GEWOON ANTWOORD
+  // normaal antwoord
   const reply = msg.content;
 
   await query(

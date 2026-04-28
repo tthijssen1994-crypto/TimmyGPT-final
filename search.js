@@ -18,6 +18,7 @@ async function searchInternet(query) {
 
     return "Geen resultaten gevonden.";
   } catch (err) {
+    console.error(err);
     return "Zoeken mislukt.";
   }
 }
