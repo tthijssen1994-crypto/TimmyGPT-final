@@ -18,7 +18,7 @@ async function handleBotLogic(user, message) {
     [user]
   );
 
-  const messages = history.rows.reverse();
+const messages = history.rows.reverse();
 
 const completion = await openai.chat.completions.create({
   model: "gpt-4o-mini",
@@ -30,3 +30,13 @@ const completion = await openai.chat.completions.create({
     ...messages
   ]
 });
+
+const reply = completion.choices[0].message.content;
+
+// sla antwoord op
+await query(
+  "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
+  [user, "assistant", reply]
+);
+
+return reply;
