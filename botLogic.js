@@ -19,7 +19,14 @@ async function handleBotLogic(user, message) {
     [user]
   );
 
-  const messages = history.rows.reverse().map(m => ({
+  const messages = history.rows
+  .reverse()
+  .filter(m =>
+    m.content &&
+    m.content.length < 300 &&
+    !m.content.toLowerCase().includes("kappa")
+  )
+  .map(m => ({
     role: m.role,
     content: m.content
   }));
