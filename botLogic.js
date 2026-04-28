@@ -13,7 +13,7 @@ async function handleBotLogic(user, message) {
     [user, "user", message]
   );
 
-  // haal history op (kort houden!)
+  // haal history op
   const history = await query(
     "SELECT role, content FROM messages WHERE user_id=$1 ORDER BY id DESC LIMIT 5",
     [user]
@@ -24,45 +24,90 @@ async function handleBotLogic(user, message) {
     content: m.content
   }));
 
-  // 🧠 detecteer of internet nodig is
-  let extraContext = "";
+  // 🧠 TOOL DEFINITIE
+  const tools = [
+    {
+      type: "function",
+      function: {
+        name: "searchInternet",
+        description: "Zoek actuele informatie op internet",
+        parameters: {
+          type: "object",
+          properties: {
+            query: {
+              type: "string",
+              description: "De zoekopdracht"
+            }
+          },
+          required: ["query"]
+        }
+      }
+    }
+  ];
 
-  if (
-    message.toLowerCase().includes("nieuws") ||
-    message.toLowerCase().includes("prijs") ||
-    message.toLowerCase().includes("wie is") ||
-    message.toLowerCase().includes("wat is") ||
-    message.toLowerCase().includes("update")
-  ) {
-    const searchResult = await searchInternet(message);
-    extraContext = `\n\nInternet info: ${searchResult}`;
-  }
-
-  const completion = await openai.chat.completions.create({
+  // 🔥 EERSTE AI CALL (beslist of hij wil zoeken)
+  const firstResponse = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
       {
         role: "system",
         content: `
-Je bent TimmyGPT, een slimme AI assistent.
+Je bent TimmyGPT.
 
 - Antwoord altijd in het Nederlands
-- Wees duidelijk en behulpzaam
-- Gebruik internet info als die gegeven wordt
-- Ga niet onnodig over de gebruiker praten
+- Gebruik de searchInternet tool ALLEEN als je iets niet zeker weet of actuele info nodig hebt
+- Geef duidelijke antwoorden
 `
       },
       ...messages,
       {
         role: "user",
-        content: message + extraContext
+        content: message
       }
-    ]
+    ],
+    tools
   });
 
-  const reply = completion.choices[0].message.content;
+  const msg = firstResponse.choices[0].message;
 
-  // sla antwoord op
+  // 🔎 ALS AI WIL ZOEKEN
+  if (msg.tool_calls) {
+    const toolCall = msg.tool_calls[0];
+    const args = JSON.parse(toolCall.function.arguments);
+
+    const result = await searchInternet(args.query);
+
+    // 🔥 TWEEDE CALL MET RESULTAAT
+    const secondResponse = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        ...messages,
+        {
+          role: "user",
+          content: message
+        },
+        msg,
+        {
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: result
+        }
+      ]
+    });
+
+    const reply = secondResponse.choices[0].message.content;
+
+    await query(
+      "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
+      [user, "assistant", reply]
+    );
+
+    return reply;
+  }
+
+  // 🧠 GEWOON ANTWOORD
+  const reply = msg.content;
+
   await query(
     "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
     [user, "assistant", reply]
