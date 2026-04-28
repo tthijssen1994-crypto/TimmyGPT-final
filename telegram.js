@@ -1,0 +1,23 @@
+const { Telegraf } = require('telegraf');
+const { handleBotLogic, resetMemory } = require('./botLogic');
+
+const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
+
+bot.command('ask', async (ctx) => {
+    const user = ctx.from.username || ctx.from.id;
+    const input = ctx.message.text.replace('/ask ', '');
+
+    await ctx.reply("🤔...");
+    const reply = await handleBotLogic(input, user);
+
+    ctx.reply(reply);
+});
+
+bot.command('reset', async (ctx) => {
+    const user = ctx.from.username || ctx.from.id;
+    await resetMemory(user);
+    ctx.reply("Memory gereset 🧠");
+});
+
+bot.launch();
+console.log("Telegram bot draait...");

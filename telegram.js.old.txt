@@ -1,0 +1,26 @@
+const { Telegraf } = require('telegraf');
+require('dotenv').config();
+
+const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
+
+// reageert op elk bericht
+bot.on('text', async (ctx) => {
+    const text = ctx.message.text;
+
+    const response = await handleBotLogic(text);
+
+    ctx.reply(response);
+});
+
+// jouw centrale logica
+async function handleBotLogic(input) {
+    return "Je zei: " + input;
+}
+
+bot.launch();
+
+console.log("Telegram bot draait...");
+
+// netjes afsluiten
+process.once('SIGINT', () => bot.stop('SIGINT'));
+process.once('SIGTERM', () => bot.stop('SIGTERM'));

@@ -1,0 +1,17 @@
+<h1>TimmyGPT Dashboard</h1>
+
+<% data.forEach(u => { %>
+  <h2><%= u.user %></h2>
+
+  <h3>Facts</h3>
+  <% u.facts.forEach(f => { %>
+    <p><%= f.key %>: <%= f.value %></p>
+  <% }) %>
+
+  <h3>Messages</h3>
+  <% u.messages.forEach(m => { %>
+    <p><b><%= m.role %>:</b> <%= m.content %></p>
+  <% }) %>
+
+  <hr>
+<% }) %>
