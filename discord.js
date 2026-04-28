@@ -21,7 +21,7 @@ client.on('messageCreate', async (message) => {
         const user = message.author.username;
 
         await message.channel.sendTyping();
-        const reply = await handleBotLogic(input, user);
+        const reply = await handleBotLogic(user, input);
 
         message.reply(reply);
     }

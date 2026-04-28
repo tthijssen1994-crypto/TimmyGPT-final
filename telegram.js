@@ -8,7 +8,7 @@ bot.command('ask', async (ctx) => {
     const input = ctx.message.text.replace('/ask ', '');
 
     await ctx.reply("🤔...");
-    const reply = await handleBotLogic(input, user);
+    const reply = await handleBotLogic(user, input);
 
     ctx.reply(reply);
 });
