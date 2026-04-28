@@ -7,7 +7,7 @@ bot.command('ask', async (ctx) => {
     const user = ctx.from.username || ctx.from.id;
     const input = ctx.message.text.replace('/ask ', '');
 
-    await ctx.reply("🤔...");
+    await ctx.reply("Denkt na...🤔");
     const reply = await handleBotLogic(user, input);
 
     ctx.reply(reply);
@@ -19,8 +19,6 @@ bot.command('reset', async (ctx) => {
     ctx.reply("Memory gereset 🧠");
 });
 
-bot.launch();
-console.log("Telegram bot draait...");
 
 bot.launch({
   dropPendingUpdates: true
