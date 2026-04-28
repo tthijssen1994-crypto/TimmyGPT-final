@@ -20,20 +20,13 @@ async function handleBotLogic(user, message) {
 
   const messages = history.rows.reverse();
 
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages
-  });
-
-  const reply = completion.choices[0].message.content;
-
-  // sla antwoord op
-  await query(
-    "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
-    [user, "assistant", reply]
-  );
-
-  return reply;
-}
-
-module.exports = { handleBotLogic };
+const completion = await openai.chat.completions.create({
+  model: "gpt-4o-mini",
+  messages: [
+    {
+      role: "system",
+      content: "Je bent TimmyGPT, een slimme en vriendelijke AI assistent. Antwoord altijd in het Nederlands."
+    },
+    ...messages
+  ]
+});
