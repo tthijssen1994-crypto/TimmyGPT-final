@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const {
   Client,
   GatewayIntentBits,
@@ -10,7 +12,8 @@ const {
   TextInputStyle
 } = require('discord.js');
 
-require('dotenv').config();
+const { handleBotLogic, resetMemory } = require('./botLogic');
+const { getBitcoinPrice } = require('./crypto');
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
@@ -30,7 +33,7 @@ function menu() {
   return {
     embeds: [
       new EmbedBuilder()
-        .setTitle("🤖 TimmyGPT+")
+        .setTitle("🤖 TimmyGPT PRO")
         .setDescription("Kies een optie 👇")
         .setColor(0x5865F2)
     ],
@@ -47,46 +50,6 @@ function menu() {
 }
 
 // =====================
-// MOCK AI (VEILIG & SNEL)
-// =====================
-async function smartReply(user, vraag) {
-  try {
-    // simpele slimme responses (geen API nodig)
-    if (vraag.toLowerCase().includes("tijd")) {
-      return `🕒 Het is ${new Date().toLocaleTimeString()}`;
-    }
-
-    if (vraag.toLowerCase().includes("naam")) {
-      return `👤 Jij bent ${user}`;
-    }
-
-    if (vraag.length < 3) {
-      return "🤔 Stel een iets duidelijkere vraag...";
-    }
-
-    // fallback AI-style response
-    return `💡 Interessante vraag: "${vraag}"\n\nIk ben nog in ontwikkeling, maar ik leer snel 😄`;
-
-  } catch (err) {
-    console.error(err);
-    return "❌ AI error";
-  }
-}
-
-// =====================
-// BITCOIN (VEILIG)
-// =====================
-async function getBitcoinPrice() {
-  try {
-    const res = await fetch("https://api.coindesk.com/v1/bpi/currentprice/EUR.json");
-    const data = await res.json();
-    return `€ ${data.bpi.EUR.rate}`;
-  } catch {
-    return "❌ Kon prijs niet ophalen";
-  }
-}
-
-// =====================
 // INTERACTIONS
 // =====================
 client.on('interactionCreate', async (interaction) => {
@@ -96,12 +59,74 @@ client.on('interactionCreate', async (interaction) => {
   // =====================
   if (interaction.isChatInputCommand()) {
 
+    const user = interaction.user.id;
+
+    // 📋 MENU
     if (interaction.commandName === 'menu') {
       return interaction.reply(menu());
     }
 
+    // 🏓 PING
     if (interaction.commandName === 'ping') {
       return interaction.reply('🏓 Pong!');
+    }
+
+    // 🤖 AI
+    if (interaction.commandName === 'ask') {
+      const vraag = interaction.options.getString('vraag');
+
+      await interaction.reply("🧠 Even nadenken...");
+
+      try {
+        let reply = await handleBotLogic(user, vraag);
+
+        // 🔥 FIXES
+        if (!reply || typeof reply !== "string") {
+          reply = "⚠️ Geen geldig antwoord";
+        }
+
+        if (reply.length > 1900) {
+          reply = reply.slice(0, 1900) + "\n\n✂️ Ingekort...";
+        }
+
+        await interaction.editReply(reply);
+
+      } catch (err) {
+        console.error(err);
+        await interaction.editReply("❌ Er ging iets mis...");
+      }
+    }
+
+    // 🎵 FAKE HACK (FUN)
+    if (interaction.commandName === 'hack') {
+      const target = interaction.options.getString('user') || "doelwit";
+
+      await interaction.reply("💻 Hacken gestart...");
+
+      setTimeout(() => {
+        interaction.editReply(`🔓 ${target} gehackt 😈 (grapje)`);
+      }, 2000);
+    }
+
+    // 🎱 8BALL
+    if (interaction.commandName === '8ball') {
+      const antwoorden = [
+        "Ja", "Nee", "Misschien", "Zeker", "Geen idee", "Vraag later opnieuw"
+      ];
+      const random = antwoorden[Math.floor(Math.random() * antwoorden.length)];
+      return interaction.reply(`🎱 ${random}`);
+    }
+
+    // 🪙 COINFLIP
+    if (interaction.commandName === 'coinflip') {
+      const result = Math.random() > 0.5 ? "Kop 🪙" : "Munt 🪙";
+      return interaction.reply(result);
+    }
+
+    // 🧠 RESET
+    if (interaction.commandName === 'reset') {
+      await resetMemory(user);
+      return interaction.reply("🧠 Geheugen gewist!");
     }
   }
 
@@ -110,9 +135,9 @@ client.on('interactionCreate', async (interaction) => {
   // =====================
   if (interaction.isButton()) {
 
-    const user = interaction.user.username;
+    const user = interaction.user.id;
 
-    // 💬 ASK
+    // 💬 ASK MODAL
     if (interaction.customId === 'ask') {
 
       const modal = new ModalBuilder()
@@ -167,6 +192,7 @@ client.on('interactionCreate', async (interaction) => {
 
     // 🧠 RESET
     if (interaction.customId === 'reset') {
+      await resetMemory(user);
       return interaction.reply({
         content: "🧠 Geheugen gereset!",
         ephemeral: true
@@ -175,33 +201,36 @@ client.on('interactionCreate', async (interaction) => {
   }
 
   // =====================
-  // MODAL
+  // MODAL SUBMIT
   // =====================
   if (interaction.isModalSubmit()) {
 
     if (interaction.customId === 'askModal') {
 
-      const user = interaction.user.username;
+      const user = interaction.user.id;
       const vraag = interaction.fields.getTextInputValue('vraag');
 
-      await interaction.deferReply();
+      await interaction.reply("🧠 Even nadenken...");
 
       try {
-        const reply = await smartReply(user, vraag);
+        let reply = await handleBotLogic(user, vraag);
+
+        // 🔥 FIXES
+        if (!reply || typeof reply !== "string") {
+          reply = "⚠️ Geen geldig antwoord";
+        }
+
+        if (reply.length > 1900) {
+          reply = reply.slice(0, 1900) + "\n\n✂️ Ingekort...";
+        }
 
         await interaction.editReply({
-          embeds: [
-            new EmbedBuilder()
-              .setTitle("💬 Antwoord")
-              .setDescription(reply)
-              .setColor(0x5865F2)
-          ],
+          content: reply,
           components: [menu().components]
         });
 
       } catch (err) {
         console.error(err);
-
         await interaction.editReply("❌ Er ging iets mis...");
       }
     }

@@ -7,176 +7,86 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// ⚡ simpele cache
+const cache = new Map();
+
 // 🧠 RESET MEMORY
 async function resetMemory(user) {
   await query("DELETE FROM messages WHERE user_id=$1", [user]);
 }
 
-// 🤖 MAIN LOGIC
+// 🤖 MAIN LOGIC (SNELLE VERSIE)
 async function handleBotLogic(user, message) {
-  const lower = message.toLowerCase();
+  try {
+    const lower = message.toLowerCase();
 
-  // sla user message op
-  await query(
-    "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
-    [user, "user", message]
-  );
+    // ⚡ CACHE (super snel)
+    if (cache.has(lower)) {
+      return "⚡ " + cache.get(lower);
+    }
 
-  // 💰 SLIMME BITCOIN CHECK (alleen bij prijs vragen)
-  if (lower.includes("bitcoin") && lower.includes("prijs")) {
-    const price = await getBitcoinPrice();
+    // 💰 BITCOIN DIRECT
+    if (lower.includes("bitcoin")) {
+      return await getBitcoinPrice();
+    }
+
+    // ⚡ HISTORY (korter = sneller)
+    const history = await query(
+      "SELECT role, content FROM messages WHERE user_id=$1 ORDER BY id DESC LIMIT 4",
+      [user]
+    );
+
+    const messages = history.rows.reverse();
+
+    // ⏱️ TIMEOUT
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("timeout")), 8000)
+    );
+
+    const aiCall = openai.chat.completions.create({
+      model: "gpt-4o-mini", // sneller model
+      messages: [
+        {
+          role: "system",
+          content: "Je bent een snelle, slimme Discord bot. Antwoord kort en duidelijk in het Nederlands."
+        },
+        ...messages,
+        { role: "user", content: message }
+      ],
+      max_tokens: 200 // ⚡ sneller
+    });
+
+    const response = await Promise.race([aiCall, timeout]);
+
+    let reply = response.choices[0].message.content;
+
+    if (!reply) reply = "⚠️ Geen antwoord";
+
+    // ✂️ lengte fix (Discord limit)
+    if (reply.length > 1900) {
+      reply = reply.slice(0, 1900) + "...";
+    }
+
+    // 💾 opslaan
+    await query(
+      "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
+      [user, "user", message]
+    );
 
     await query(
       "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
-      [user, "assistant", price]
+      [user, "assistant", reply]
     );
 
-    return price;
+    // ⚡ cache opslaan
+    cache.set(lower, reply);
+
+    return reply;
+
+  } catch (err) {
+    console.error("BOT ERROR:", err.message);
+    return "⚡ Bot is even traag, probeer opnieuw...";
   }
-
-  // 📚 HISTORY
-  const history = await query(
-    "SELECT role, content FROM messages WHERE user_id=$1 ORDER BY id DESC LIMIT 6",
-    [user]
-  );
-
-  const messages = history.rows
-    .reverse()
-    .filter(m =>
-      m.content &&
-      m.content.length < 300 &&
-      !m.content.toLowerCase().includes("kappa")
-    )
-    .map(m => ({
-      role: m.role,
-      content: m.content
-    }));
-
-  // 🔧 TOOL
-  const tools = [
-    {
-      type: "function",
-      function: {
-        name: "searchInternet",
-        description: "Zoek actuele informatie op internet",
-        parameters: {
-          type: "object",
-          properties: {
-            query: { type: "string" }
-          },
-          required: ["query"]
-        }
-      }
-    }
-  ];
-
-  // 🚀 AI CALL
-  const firstResponse = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [
-      {
-        role: "system",
-        content: `
-Je bent TimmyGPT.
-
-- Antwoord ALTIJD in het Nederlands
-- Geef duidelijke en directe antwoorden
-- Gebruik searchInternet bij actuele info (prijzen, nieuws, etc)
-- Ga NIET over de gebruiker praten tenzij gevraagd
-`
-      },
-      ...messages,
-      { role: "user", content: message }
-    ],
-    tools,
-    tool_choice: "auto"
-  });
-
-  const msg = firstResponse.choices[0].message;
-
-  // 🔎 TOOL CALL
-  if (msg.tool_calls) {
-    try {
-      const toolCall = msg.tool_calls[0];
-      const args = JSON.parse(toolCall.function.arguments);
-
-      const result = await searchInternet(args.query);
-
-      const secondResponse = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          ...messages,
-          { role: "user", content: message },
-          msg,
-          {
-            role: "tool",
-            tool_call_id: toolCall.id,
-            content: result
-          }
-        ]
-      });
-
-      const reply = secondResponse.choices[0].message.content;
-
-      await query(
-        "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
-        [user, "assistant", reply]
-      );
-
-      return reply;
-
-    } catch (err) {
-      console.error("Tool error:", err);
-    }
-  }
-
-  // 🔥 FALLBACK SEARCH
-  if (
-    lower.includes("prijs") ||
-    lower.includes("nieuws") ||
-    lower.includes("wie is") ||
-    lower.includes("wat is")
-  ) {
-    try {
-      const result = await searchInternet(message);
-
-      const forcedResponse = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: "Gebruik deze internet info om de vraag te beantwoorden."
-          },
-          {
-            role: "user",
-            content: message + "\n\n" + result
-          }
-        ]
-      });
-
-      const reply = forcedResponse.choices[0].message.content;
-
-      await query(
-        "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
-        [user, "assistant", reply]
-      );
-
-      return reply;
-
-    } catch (err) {
-      console.error("Fallback error:", err);
-    }
-  }
-
-  // 💬 NORMAAL ANTWOORD
-  const reply = msg.content || "Hmm, daar weet ik even geen antwoord op.";
-
-  await query(
-    "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
-    [user, "assistant", reply]
-  );
-
-  return reply;
 }
 
 module.exports = { handleBotLogic, resetMemory };
