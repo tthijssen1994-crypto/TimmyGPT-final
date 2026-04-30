@@ -162,14 +162,14 @@ discordClient.login(DISCORD_TOKEN);
 // ----------------------------------------
 const telegramBot = new Telegraf(TELEGRAM_TOKEN);
 
-// Verwijder de webhook expliciet
+// **Verwijder de Webhook expliciet**
 telegramBot.telegram.deleteWebhook().then(() => {
   console.log('Webhook succesvol verwijderd!');
-  return telegramBot.telegram.getWebhookInfo();
+  return telegramBot.telegram.getWebhookInfo(); // Controleer of het gelukt is
 }).then((info) => {
-  console.log('Webhook info:', info); // Controleer of de webhook daadwerkelijk verwijderd is
+  console.log('Webhook info:', info); // Webhook info tonen voor controle
 }).catch((err) => {
-  console.error('Fout bij verwijderen van de webhook:', err);
+  console.error('Fout bij verwijderen van de webhook:', err); // Als er iets misgaat, laat het ons weten
 });
 
 // Telegram bot start actie
