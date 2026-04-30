@@ -159,7 +159,6 @@ discordClient.login(DISCORD_TOKEN);
 
 // ----------------------------------------
 // Telegram bot configuratie
-// ----------------------------------------
 const telegramBot = new Telegraf(TELEGRAM_TOKEN);
 
 // **Verwijder de Webhook expliciet**
@@ -174,18 +173,20 @@ telegramBot.telegram.deleteWebhook().then(() => {
 
 // Telegram bot start actie
 telegramBot.start((ctx) => {
-  ctx.reply("🤖 Welkom bij TimmyGPT op Telegram! Gebruik de knoppen hieronder om interactie te hebben:", Markup.inlineKeyboard([
-    [Markup.button.callback("💬 Vraag stellen", "ASK")],
-    [Markup.button.callback("💰 Bitcoin prijs", "PRICE")],
-    [Markup.button.callback("🧠 Reset geheugen", "RESET")],
-    [Markup.button.callback("❓ Help", "HELP")]
-  ]));
+  ctx.reply("🤖 Welkom bij TimmyGPT op Telegram! Gebruik de knoppen hieronder om interactie te hebben:", 
+    Markup.inlineKeyboard([
+      [Markup.button.callback("💬 Vraag stellen", "ASK")],
+      [Markup.button.callback("💰 Bitcoin prijs", "PRICE")],
+      [Markup.button.callback("🧠 Reset geheugen", "RESET")],
+      [Markup.button.callback("❓ Help", "HELP")] // Correcte toevoeging van Help knop
+    ])
+  );
   console.log("Telegram bot gestart!");
 });
 
 // Telegram actie voor knoppen
 telegramBot.action('ASK', (ctx) => {
-  ctx.reply("Typ je vraag:");
+  ctx.reply("Typ je vraag hieronder, en ik zal mijn best doen om je te helpen:");
 });
 
 telegramBot.action('PRICE', async (ctx) => {
@@ -201,12 +202,12 @@ telegramBot.action('RESET', async (ctx) => {
 
 // Telegram command /ask
 telegramBot.command('ask', async (ctx) => {
-  const user = ctx.from.username || ctx.from.id;
-  const input = ctx.message.text.replace('/ask ', '');
+  const input = ctx.message.text.replace('/ask ', ''); // Haal de vraag op
+  const user = ctx.from.username || ctx.from.id; // Verkrijg de gebruiker
 
   try {
-    const reply = await handleBotLogic(user, input);
-    ctx.reply(reply);
+    const reply = await handleBotLogic(user, input); // Verwerk de vraag
+    ctx.reply(reply); // Geef het antwoord terug aan de gebruiker
   } catch (err) {
     console.error(err);
     ctx.reply("❌ Er ging iets mis.");
