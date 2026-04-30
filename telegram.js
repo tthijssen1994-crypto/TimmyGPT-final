@@ -1,3 +1,15 @@
+console.log("Telegram bot bestand geladen en uitgevoerd");
+
+const { Telegraf, Markup } = require('telegraf');
+const { handleBotLogic, resetMemory } = require('./botLogic');
+const { getBitcoinPrice } = require('./crypto');
+const { searchInternet } = require('./search');
+
+// Maak verbinding met de bot met behulp van je token uit Railway omgevingsvariabelen
+const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
+
+// Log om te controleren of de bot opstart
+console.log("Bot wordt gestart...");
 const { Telegraf, Markup } = require('telegraf');
 const { handleBotLogic, resetMemory } = require('./botLogic');
 const { getBitcoinPrice } = require('./crypto');
