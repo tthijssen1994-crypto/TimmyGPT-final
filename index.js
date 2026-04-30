@@ -186,18 +186,39 @@ telegramBot.start((ctx) => {
 
 // Telegram actie voor knoppen
 telegramBot.action('ASK', (ctx) => {
+  ctx.answerCbQuery(); // Bevestig de callback-query
   ctx.reply("Typ je vraag hieronder, en ik zal mijn best doen om je te helpen:");
 });
 
 telegramBot.action('PRICE', async (ctx) => {
+  ctx.answerCbQuery(); // Bevestig de callback-query
   const price = await getBitcoinPrice();
   ctx.reply(price);
 });
 
 telegramBot.action('RESET', async (ctx) => {
+  ctx.answerCbQuery(); // Bevestig de callback-query
   const user = ctx.from.username || ctx.from.id;
   await resetMemory(user);
   ctx.reply("🧠 Geheugen gereset!");
+});
+
+telegramBot.action('HELP', async (ctx) => {
+  try {
+    await ctx.answerCbQuery(); // Bevestig de callback-query
+    ctx.reply(`
+      🤖 Commands:
+
+      /ask vraag → stel een vraag
+      /price bitcoin → crypto prijs
+      /reset → wis geheugen
+      /ping → check bot
+      /help → dit menu
+    `);
+  } catch (error) {
+    console.error("Error during HELP action:", error);
+    ctx.reply("Er is iets mis gegaan, probeer het opnieuw.");
+  }
 });
 
 // Telegram command /ask
