@@ -282,7 +282,7 @@ telegramBot.command('help', (ctx) => {
 
 // Telegram bot starten in polling-modus
 telegramBot.launch({
-  polling: { timeout: 500, long_polling: false }
+  polling: { timeout: 5, long_polling: true }
 }).then(() => {
   console.log('Telegram bot draait nu in polling-modus!');
 }).catch((err) => {
