@@ -1,40 +1,21 @@
 const { Telegraf } = require('telegraf');
 
-// Haal de Telegram Token op uit de omgevingsvariabelen
+// Gebruik je GitHub Secret om de token op te halen
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
 
-// 🚀 Start de bot
+// Wanneer iemand /start stuurt, reageert de bot met een welkom bericht
 bot.start((ctx) => {
-  ctx.reply("Hallo, ik ben TimmyGPT!");
+  console.log('Bot is gestart en reageert op /start'); // Logbericht toegevoegd
+  ctx.reply("Hallo, ik ben TimmyGPT! De bot werkt nu!");
 });
 
-bot.launch();
-const { handleBotLogic, resetMemory } = require('./botLogic');
-const { getBitcoinPrice } = require('./crypto');
-const { searchInternet } = require('./search');
-
-const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
-
-// ✨ STREAMING EFFECT
-async function streamReply(ctx, text) {
-  const chunks = text.match(/.{1,50}/g) || [text];
-  let current = "";
-
-  const msg = await ctx.reply("💭...");
-
-  for (const chunk of chunks) {
-    current += chunk;
-
-    await ctx.telegram.editMessageText(
-      ctx.chat.id,
-      msg.message_id,
-      null,
-      current
-    );
-
-    await new Promise(r => setTimeout(r, 80));
-  }
-}
+// Start de bot
+bot.launch()
+  .then(() => console.log("Bot gestart!"))
+  .catch((err) => {
+    console.error("Fout bij starten bot:", err);
+    process.exit(1);  // Stop het proces als de bot niet kan starten
+  });
 
 // 🚀 START MENU MET BUTTONS
 bot.start((ctx) => {
