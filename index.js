@@ -26,17 +26,17 @@ function menu() {
           .setCustomId('ask')
           .setLabel('💬 Vraag')
           .setStyle(ButtonStyle.Primary),
-        
+
         new ButtonBuilder()
           .setCustomId('price')
           .setLabel('💰 Bitcoin')
           .setStyle(ButtonStyle.Success),
-        
+
         new ButtonBuilder()
           .setCustomId('reset')
           .setLabel('🧠 Reset')
           .setStyle(ButtonStyle.Danger),
-        
+
         new ButtonBuilder()
           .setCustomId('help')
           .setLabel('❓ Help')
@@ -99,7 +99,7 @@ client.on('interactionCreate', async (interaction) => {
             .setDescription(price)
             .setColor(0xF7931A)
         ],
-        flags: [MessageFlags.Ephemeral] // Gebruik hier de juiste EPHEMERAL flag
+        flags: MessageFlags.Ephemeral // Gebruik de juiste EPHEMERAL flag
       });
     }
 
@@ -109,7 +109,7 @@ client.on('interactionCreate', async (interaction) => {
 
       return interaction.reply({
         content: "🧠 Geheugen gereset!",
-        flags: [MessageFlags.Ephemeral] // Gebruik hier de juiste EPHEMERAL flag
+        flags: MessageFlags.Ephemeral // Gebruik de juiste EPHEMERAL flag
       });
     }
 
@@ -126,7 +126,7 @@ client.on('interactionCreate', async (interaction) => {
             `)
             .setColor(0x00AE86)
         ],
-        flags: [MessageFlags.Ephemeral] // Gebruik hier de juiste EPHEMERAL flag
+        flags: MessageFlags.Ephemeral // Gebruik de juiste EPHEMERAL flag
       });
     }
   }
@@ -146,7 +146,7 @@ client.on('interactionCreate', async (interaction) => {
       try {
         const reply = await handleBotLogic(user, vraag);
 
-        // Hier geen componenten doorgeven om de "Invalid Form Body" fout te vermijden
+        // Verwijder de components uit de editReply om de fout te vermijden
         await interaction.editReply({
           embeds: [
             new EmbedBuilder()
@@ -154,7 +154,6 @@ client.on('interactionCreate', async (interaction) => {
               .setDescription(reply)
               .setColor(0x5865F2)
           ]
-          // Verwijder de components uit de editReply om de fout te vermijden
         });
       } catch (error) {
         console.error("Error while processing modal:", error);
