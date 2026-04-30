@@ -146,20 +146,20 @@ client.on('interactionCreate', async (interaction) => {
       try {
         const reply = await handleBotLogic(user, vraag);
 
+        // Hier geen componenten doorgeven om de "Invalid Form Body" fout te vermijden
         await interaction.editReply({
           embeds: [
             new EmbedBuilder()
               .setTitle("💬 Antwoord")
               .setDescription(reply)
               .setColor(0x5865F2)
-          ],
-          components: [menu().components]
+          ]
+          // Verwijder de components uit de editReply om de fout te vermijden
         });
       } catch (error) {
         console.error("Error while processing modal:", error);
         await interaction.editReply({
           content: "Er ging iets mis, probeer het later opnieuw.",
-          components: []
         });
       }
     }
