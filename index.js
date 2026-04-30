@@ -1,17 +1,24 @@
+// Discord.js en Telegraf importeren
 const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags } = require('discord.js');
+const { Telegraf } = require('telegraf'); // Telegram bot
 const { handleBotLogic, resetMemory } = require('./botLogic');
 const { getBitcoinPrice } = require('./crypto');
 
-const client = new Client({
+// Omgevingsvariabelen
+const { TELEGRAM_TOKEN, DISCORD_TOKEN } = process.env;
+
+// ----------------------------------------
+// Discord bot configuratie
+// ----------------------------------------
+const discordClient = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
 
-// Verander 'ready' naar 'clientReady' voor v15 van discord.js
-client.once('clientReady', () => {
-  console.log(`🚀 Online als ${client.user.tag}`);
+discordClient.once('clientReady', () => {
+  console.log(`🚀 Discord bot online als ${discordClient.user.tag}`);
 });
 
-// 🎨 MENU UI
+// 🎨 MENU UI voor Discord
 function menu() {
   return {
     embeds: [
@@ -46,13 +53,9 @@ function menu() {
   };
 }
 
-client.on('interactionCreate', async (interaction) => {
-
-  // =====================
-  // SLASH COMMANDS
-  // =====================
+// Discord bot event: interactionCreate
+discordClient.on('interactionCreate', async (interaction) => {
   if (interaction.isChatInputCommand()) {
-
     if (interaction.commandName === 'menu') {
       return interaction.reply(menu());
     }
@@ -62,14 +65,9 @@ client.on('interactionCreate', async (interaction) => {
     }
   }
 
-  // =====================
-  // BUTTONS
-  // =====================
   if (interaction.isButton()) {
-
     const user = interaction.user.username;
 
-    // 💬 OPEN MODAL
     if (interaction.customId === 'ask') {
       const modal = new ModalBuilder()
         .setCustomId('askModal')
@@ -88,7 +86,6 @@ client.on('interactionCreate', async (interaction) => {
       return interaction.showModal(modal);
     }
 
-    // 💰 BITCOIN
     if (interaction.customId === 'price') {
       const price = await getBitcoinPrice();
 
@@ -99,21 +96,19 @@ client.on('interactionCreate', async (interaction) => {
             .setDescription(price)
             .setColor(0xF7931A)
         ],
-        flags: MessageFlags.Ephemeral // Gebruik de juiste EPHEMERAL flag
+        flags: MessageFlags.Ephemeral
       });
     }
 
-    // 🧠 RESET
     if (interaction.customId === 'reset') {
       await resetMemory(user);
 
       return interaction.reply({
         content: "🧠 Geheugen gereset!",
-        flags: MessageFlags.Ephemeral // Gebruik de juiste EPHEMERAL flag
+        flags: MessageFlags.Ephemeral
       });
     }
 
-    // ❓ HELP
     if (interaction.customId === 'help') {
       return interaction.reply({
         embeds: [
@@ -126,18 +121,13 @@ client.on('interactionCreate', async (interaction) => {
             `)
             .setColor(0x00AE86)
         ],
-        flags: MessageFlags.Ephemeral // Gebruik de juiste EPHEMERAL flag
+        flags: MessageFlags.Ephemeral
       });
     }
   }
 
-  // =====================
-  // MODAL SUBMIT
-  // =====================
   if (interaction.isModalSubmit()) {
-
     if (interaction.customId === 'askModal') {
-
       const user = interaction.user.username;
       const vraag = interaction.fields.getTextInputValue('vraag');
 
@@ -146,7 +136,6 @@ client.on('interactionCreate', async (interaction) => {
       try {
         const reply = await handleBotLogic(user, vraag);
 
-        // Verwijder de components uit de editReply om de fout te vermijden
         await interaction.editReply({
           embeds: [
             new EmbedBuilder()
@@ -165,4 +154,86 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
-client.login(process.env.DISCORD_TOKEN);
+// Log in de Discord bot
+discordClient.login(DISCORD_TOKEN);
+
+// ----------------------------------------
+// Telegram bot configuratie
+// ----------------------------------------
+const telegramBot = new Telegraf(TELEGRAM_TOKEN);
+
+// Telegram bot start actie
+telegramBot.start((ctx) => {
+  ctx.reply("🤖 Welkom bij TimmyGPT op Telegram!");
+  console.log("Telegram bot gestart!");
+});
+
+// Telegram actie voor menu
+telegramBot.action('ASK', (ctx) => {
+  ctx.reply("Typ je vraag:");
+});
+
+telegramBot.action('PRICE', async (ctx) => {
+  const price = await getBitcoinPrice();
+  ctx.reply(price);
+});
+
+telegramBot.action('SEARCH', (ctx) => {
+  ctx.reply("Wat wil je zoeken?");
+});
+
+telegramBot.action('RESET', async (ctx) => {
+  const user = ctx.from.username || ctx.from.id;
+  await resetMemory(user);
+  ctx.reply("🧠 Geheugen gereset!");
+});
+
+// Telegram command /ask
+telegramBot.command('ask', async (ctx) => {
+  const user = ctx.from.username || ctx.from.id;
+  const input = ctx.message.text.replace('/ask ', '');
+
+  try {
+    const reply = await handleBotLogic(user, input);
+    ctx.reply(reply);
+  } catch (err) {
+    console.error(err);
+    ctx.reply("❌ Er ging iets mis.");
+  }
+});
+
+// Telegram command /price
+telegramBot.command('price', async (ctx) => {
+  const input = ctx.message.text.toLowerCase();
+  if (input.includes("bitcoin") || input.includes("btc")) {
+    const price = await getBitcoinPrice();
+    return ctx.reply(price);
+  }
+
+  ctx.reply("Gebruik: /price bitcoin");
+});
+
+// Telegram command /reset
+telegramBot.command('reset', async (ctx) => {
+  const user = ctx.from.username || ctx.from.id;
+  await resetMemory(user);
+  ctx.reply("🧠 Geheugen gereset!");
+});
+
+// Telegram command /help
+telegramBot.command('help', (ctx) => {
+  ctx.reply(`
+🤖 Commands:
+
+/ask vraag → stel een vraag
+/price bitcoin → crypto prijs
+/search onderwerp → zoek info
+/reset → wis geheugen
+/ping → check bot
+/help → dit menu
+`);
+});
+
+// Telegram bot starten
+telegramBot.launch();
+console.log("Telegram bot draait!");
