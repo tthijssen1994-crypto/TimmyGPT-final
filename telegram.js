@@ -1,6 +1,7 @@
 const { Telegraf, Markup } = require('telegraf');
 const { handleBotLogic, resetMemory } = require('./botLogic');
 const { getBitcoinPrice } = require('./crypto');
+const { searchInternet } = require('./search');
 
 // Telegram bot configuratie
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
@@ -38,7 +39,8 @@ bot.start((ctx) => {
       [Markup.button.callback("👋 Hallo", "HELLO")],
       [Markup.button.callback("ℹ️ Info", "INFO")],
       [Markup.button.callback("💬 Quote", "QUOTE")],
-      [Markup.button.callback("😂 Joke", "JOKE")]
+      [Markup.button.callback("😂 Joke", "JOKE")],
+      [Markup.button.callback("❓ Help", "HELP")]
     ])
   );
   console.log("Telegram bot gestart!");
