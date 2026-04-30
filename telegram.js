@@ -24,10 +24,10 @@ async function streamReply(ctx, text) {
   }
 }
 
-// 🚀 Verwijder Webhook (heel belangrijk om deze stap toe te voegen)
+// 🚀 Verwijder Webhook (en zorg ervoor dat de bot in polling-modus draait)
 bot.telegram.deleteWebhook()
   .then(() => {
-    console.log('Webhook verwijderd, bot draait nu in polling modus');
+    console.log('Webhook succesvol verwijderd, bot draait nu in polling-modus');
   })
   .catch(err => {
     console.error('Fout bij verwijderen van webhook:', err);
