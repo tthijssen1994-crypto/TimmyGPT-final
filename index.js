@@ -162,6 +162,15 @@ discordClient.login(DISCORD_TOKEN);
 // ----------------------------------------
 const telegramBot = new Telegraf(TELEGRAM_TOKEN);
 
+// Webhook verwijderen voor Telegram en starten in polling-modus
+telegramBot.telegram.deleteWebhook()
+  .then(() => {
+    console.log('Webhook verwijderd, Telegram bot draait nu in polling modus');
+  })
+  .catch(err => {
+    console.error('Fout bij verwijderen van webhook:', err);
+  });
+
 // Telegram bot start actie
 telegramBot.start((ctx) => {
   ctx.reply("🤖 Welkom bij TimmyGPT op Telegram!");
@@ -234,6 +243,9 @@ telegramBot.command('help', (ctx) => {
 `);
 });
 
-// Telegram bot starten
-telegramBot.launch();
+// Telegram bot starten in polling-modus
+telegramBot.launch({
+  polling: { timeout: 50, long_polling: true }
+});
+
 console.log("Telegram bot draait!");
