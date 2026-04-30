@@ -1,6 +1,5 @@
 const OpenAI = require("openai");
 const { query } = require('./database');
-const { searchInternet } = require('./search');
 const { getBitcoinPrice } = require('./crypto');
 
 const openai = new OpenAI({
