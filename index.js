@@ -190,6 +190,20 @@ telegramBot.action('ASK', (ctx) => {
   ctx.reply("Typ je vraag hieronder, en ik zal mijn best doen om je te helpen:");
 });
 
+// Verwerk de tekstinvoer
+telegramBot.on('text', async (ctx) => {
+  const input = ctx.message.text; // Haal de tekst die de gebruiker invoert op
+  const user = ctx.from.username || ctx.from.id; // Verkrijg de gebruiker
+
+  try {
+    const reply = await handleBotLogic(user, input); // Verwerk de vraag via je botlogica
+    ctx.reply(reply); // Stuur het antwoord terug naar de gebruiker
+  } catch (err) {
+    console.error(err);
+    ctx.reply("❌ Er ging iets mis bij het verwerken van je vraag.");
+  }
+});
+
 telegramBot.action('PRICE', async (ctx) => {
   ctx.answerCbQuery(); // Bevestig de callback-query
   const price = await getBitcoinPrice();
