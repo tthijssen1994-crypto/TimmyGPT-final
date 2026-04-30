@@ -159,20 +159,18 @@ discordClient.login(DISCORD_TOKEN);
 
 // ----------------------------------------
 // Telegram bot configuratie
+// ----------------------------------------
 const telegramBot = new Telegraf(TELEGRAM_TOKEN);
 
-// Webhook verwijderen voor Telegram en starten in polling-modus
-telegramBot.telegram.deleteWebhook()
-  .then(() => {
-    console.log('Webhook succesvol verwijderd, Telegram bot draait nu in polling modus');
-    // Zorg ervoor dat de bot na verwijderen van de webhook goed start in polling-modus
-    telegramBot.launch({
-      polling: { timeout: 50, long_polling: true }
-    });
-  })
-  .catch(err => {
-    console.error('Fout bij verwijderen van webhook:', err);
-  });
+// Verwijder de webhook expliciet
+telegramBot.telegram.deleteWebhook().then(() => {
+  console.log('Webhook succesvol verwijderd!');
+  return telegramBot.telegram.getWebhookInfo();
+}).then((info) => {
+  console.log('Webhook info:', info); // Controleer of de webhook daadwerkelijk verwijderd is
+}).catch((err) => {
+  console.error('Fout bij verwijderen van de webhook:', err);
+});
 
 // Telegram bot start actie
 telegramBot.start((ctx) => {
@@ -249,6 +247,14 @@ telegramBot.command('help', (ctx) => {
 // Telegram bot starten in polling-modus
 telegramBot.launch({
   polling: { timeout: 50, long_polling: true }
+}).then(() => {
+  console.log('Telegram bot draait nu in polling-modus!');
+}).catch((err) => {
+  console.error('Fout bij het starten van de bot in polling-modus:', err);
 });
 
 console.log("Telegram bot draait!");
+
+// 🔒 netjes afsluiten
+process.once('SIGINT', () => telegramBot.stop('SIGINT'));
+process.once('SIGTERM', () => telegramBot.stop('SIGTERM'));
