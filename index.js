@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags } = require('discord.js');
 const { handleBotLogic, resetMemory } = require('./botLogic');
 const { getBitcoinPrice } = require('./crypto');
 
@@ -99,7 +99,7 @@ client.on('interactionCreate', async (interaction) => {
             .setDescription(price)
             .setColor(0xF7931A)
         ],
-        flags: ['EPHEMERAL'] // Correcte manier om een bericht als 'ephemeral' te markeren
+        flags: [MessageFlags.Ephemeral] // Gebruik hier de juiste EPHEMERAL flag
       });
     }
 
@@ -109,7 +109,7 @@ client.on('interactionCreate', async (interaction) => {
 
       return interaction.reply({
         content: "🧠 Geheugen gereset!",
-        flags: ['EPHEMERAL']
+        flags: [MessageFlags.Ephemeral] // Gebruik hier de juiste EPHEMERAL flag
       });
     }
 
@@ -126,7 +126,7 @@ client.on('interactionCreate', async (interaction) => {
             `)
             .setColor(0x00AE86)
         ],
-        flags: ['EPHEMERAL']
+        flags: [MessageFlags.Ephemeral] // Gebruik hier de juiste EPHEMERAL flag
       });
     }
   }
