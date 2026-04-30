@@ -1,4 +1,14 @@
-const { Telegraf, Markup } = require('telegraf');
+const { Telegraf } = require('telegraf');
+
+// Haal de Telegram Token op uit de omgevingsvariabelen
+const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
+
+// 🚀 Start de bot
+bot.start((ctx) => {
+  ctx.reply("Hallo, ik ben TimmyGPT!");
+});
+
+bot.launch();
 const { handleBotLogic, resetMemory } = require('./botLogic');
 const { getBitcoinPrice } = require('./crypto');
 const { searchInternet } = require('./search');
