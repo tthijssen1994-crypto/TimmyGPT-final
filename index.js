@@ -76,7 +76,7 @@ discordClient.on('interactionCreate', async (interaction) => {
       const input = new TextInputBuilder()
         .setCustomId('vraag')
         .setLabel('Wat wil je weten?')
-        .setStyle(TextInputStyle.Paragraph) // Correcte haakje toegevoegd
+        .setStyle(TextInputStyle.Paragraph)
         .setRequired(true);
 
       modal.addComponents(
@@ -178,10 +178,10 @@ telegramBot.start((ctx) => {
       [Markup.button.callback("💬 Vraag stellen", "ASK")],
       [Markup.button.callback("💰 Bitcoin prijs", "PRICE")],
       [Markup.button.callback("🧠 Reset geheugen", "RESET")],
-      [Markup.button.callback("❓ Help", "HELP")] // Correcte toevoeging van Help knop
+      [Markup.button.callback("❓ Help", "HELP")]
     ])
   );
-  console.log("Telegram bot gestart!");
+  console.log("Telegram bot gestart! 🥰");
 });
 
 // Telegram actie voor knoppen
@@ -268,14 +268,14 @@ telegramBot.command('help', (ctx) => {
 
 // Telegram bot starten in polling-modus
 telegramBot.launch({
-  polling: { timeout: 50, long_polling: true }
+  polling: { timeout: 500, long_polling: true }
 }).then(() => {
   console.log('Telegram bot draait nu in polling-modus!');
 }).catch((err) => {
   console.error('Fout bij het starten van de bot in polling-modus:', err);
 });
 
-console.log("Telegram bot draait!");
+console.log("Telegram bot draait! 😎");
 
 // 🔒 netjes afsluiten
 process.once('SIGINT', () => telegramBot.stop('SIGINT'));
