@@ -12,7 +12,12 @@ const cache = new Map();
 
 // 🧠 RESET MEMORY
 async function resetMemory(user) {
-  await query("DELETE FROM messages WHERE user_id=$1", [user]);
+  try {
+    await query("DELETE FROM messages WHERE user_id=$1", [user]);
+    console.log(`Memory reset for user: ${user}`);
+  } catch (error) {
+    console.error(`Error resetting memory for user ${user}:`, error);
+  }
 }
 
 // 🤖 MAIN LOGIC (SNELLE VERSIE)
@@ -22,11 +27,13 @@ async function handleBotLogic(user, message) {
 
     // ⚡ CACHE (super snel)
     if (cache.has(lower)) {
+      console.log(`Cache hit for user ${user}: ${lower}`);
       return "⚡ " + cache.get(lower);
     }
 
     // 💰 BITCOIN DIRECT
     if (lower.includes("bitcoin")) {
+      console.log(`Bitcoin price requested by ${user}`);
       return await getBitcoinPrice();
     }
 
@@ -44,7 +51,7 @@ async function handleBotLogic(user, message) {
     );
 
     const aiCall = openai.chat.completions.create({
-      model: "gpt-4o-mini", // sneller model
+      model: "gpt-4", // Sneller en nieuwere versie
       messages: [
         {
           role: "system",
@@ -62,25 +69,32 @@ async function handleBotLogic(user, message) {
 
     if (!reply) reply = "⚠️ Geen antwoord";
 
-    // ✂️ lengte fix (Discord limit)
+    // ✂️ Lengte fix (Discord limit)
     if (reply.length > 1900) {
       reply = reply.slice(0, 1900) + "...";
     }
 
-    // 💾 opslaan
-    await query(
-      "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
-      [user, "user", message]
-    );
+    // 💾 opslaan in database
+    try {
+      await query(
+        "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
+        [user, "user", message]
+      );
 
-    await query(
-      "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
-      [user, "assistant", reply]
-    );
+      await query(
+        "INSERT INTO messages (user_id, role, content) VALUES ($1, $2, $3)",
+        [user, "assistant", reply]
+      );
 
-    // ⚡ cache opslaan
+      console.log(`Saved message from ${user} to database.`);
+    } catch (err) {
+      console.error("Database error while saving messages:", err.message);
+    }
+
+    // ⚡ Cache opslaan
     cache.set(lower, reply);
 
+    console.log(`Reply for user ${user}:`, reply);
     return reply;
 
   } catch (err) {
