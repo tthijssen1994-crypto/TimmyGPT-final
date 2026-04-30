@@ -1,7 +1,6 @@
 const { Telegraf, Markup } = require('telegraf');
 const { handleBotLogic, resetMemory } = require('./botLogic');
 const { getBitcoinPrice } = require('./crypto');
-const { searchInternet } = require('./search');
 
 // Telegram bot configuratie
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
@@ -15,14 +14,12 @@ async function streamReply(ctx, text) {
 
   for (const chunk of chunks) {
     current += chunk;
-
     await ctx.telegram.editMessageText(
       ctx.chat.id,
       msg.message_id,
       null,
       current
     );
-
     await new Promise(r => setTimeout(r, 80)); // Typ effect
   }
 }
