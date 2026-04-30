@@ -174,11 +174,16 @@ telegramBot.telegram.deleteWebhook().then(() => {
 
 // Telegram bot start actie
 telegramBot.start((ctx) => {
-  ctx.reply("🤖 Welkom bij TimmyGPT op Telegram!");
+  ctx.reply("🤖 Welkom bij TimmyGPT op Telegram! Gebruik de knoppen hieronder om interactie te hebben:", Markup.inlineKeyboard([
+    [Markup.button.callback("💬 Vraag stellen", "ASK")],
+    [Markup.button.callback("💰 Bitcoin prijs", "PRICE")],
+    [Markup.button.callback("🧠 Reset geheugen", "RESET")],
+    [Markup.button.callback("❓ Help", "HELP")]
+  ]));
   console.log("Telegram bot gestart!");
 });
 
-// Telegram actie voor menu
+// Telegram actie voor knoppen
 telegramBot.action('ASK', (ctx) => {
   ctx.reply("Typ je vraag:");
 });
@@ -186,10 +191,6 @@ telegramBot.action('ASK', (ctx) => {
 telegramBot.action('PRICE', async (ctx) => {
   const price = await getBitcoinPrice();
   ctx.reply(price);
-});
-
-telegramBot.action('SEARCH', (ctx) => {
-  ctx.reply("Wat wil je zoeken?");
 });
 
 telegramBot.action('RESET', async (ctx) => {
@@ -237,7 +238,6 @@ telegramBot.command('help', (ctx) => {
 
 /ask vraag → stel een vraag
 /price bitcoin → crypto prijs
-/search onderwerp → zoek info
 /reset → wis geheugen
 /ping → check bot
 /help → dit menu
