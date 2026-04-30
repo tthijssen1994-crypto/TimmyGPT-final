@@ -5,34 +5,6 @@ const { getBitcoinPrice } = require('./crypto');
 // Telegram bot configuratie
 const bot = new Telegraf(process.env.TELEGRAM_TOKEN);
 
-// ✨ STREAMING EFFECT (gebruikt voor langere antwoorden)
-async function streamReply(ctx, text) {
-  const chunks = text.match(/.{1,50}/g) || [text];
-  let current = "";
-
-  const msg = await ctx.reply("💭...");
-
-  for (const chunk of chunks) {
-    current += chunk;
-    await ctx.telegram.editMessageText(
-      ctx.chat.id,
-      msg.message_id,
-      null,
-      current
-    );
-    await new Promise(r => setTimeout(r, 80)); // Typ effect
-  }
-}
-
-// 🚀 Verwijder Webhook als die ingesteld is en zet bot in polling modus
-bot.telegram.deleteWebhook()
-  .then(() => {
-    console.log('Webhook verwijderd, bot draait nu in polling modus');
-  })
-  .catch(err => {
-    console.error('Fout bij verwijderen van webhook:', err);
-  });
-
 // 🚀 START MENU MET BUTTONS
 bot.start((ctx) => {
   ctx.reply(
