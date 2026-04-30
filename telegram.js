@@ -24,6 +24,13 @@ async function streamReply(ctx, text) {
   }
 }
 
+// 🚀 Verwijder Webhook als die ingesteld is
+bot.telegram.deleteWebhook().then(() => {
+  console.log('Webhook verwijderd, bot draait nu in polling modus');
+}).catch(err => {
+  console.error('Fout bij verwijderen van webhook:', err);
+});
+
 // 🚀 START MENU MET BUTTONS
 bot.start((ctx) => {
   ctx.reply(
