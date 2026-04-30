@@ -159,13 +159,16 @@ discordClient.login(DISCORD_TOKEN);
 
 // ----------------------------------------
 // Telegram bot configuratie
-// ----------------------------------------
 const telegramBot = new Telegraf(TELEGRAM_TOKEN);
 
 // Webhook verwijderen voor Telegram en starten in polling-modus
 telegramBot.telegram.deleteWebhook()
   .then(() => {
-    console.log('Webhook verwijderd, Telegram bot draait nu in polling modus');
+    console.log('Webhook succesvol verwijderd, Telegram bot draait nu in polling modus');
+    // Zorg ervoor dat de bot na verwijderen van de webhook goed start in polling-modus
+    telegramBot.launch({
+      polling: { timeout: 50, long_polling: true }
+    });
   })
   .catch(err => {
     console.error('Fout bij verwijderen van webhook:', err);
