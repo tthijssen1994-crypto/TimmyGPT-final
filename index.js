@@ -1,6 +1,6 @@
 // Discord bot configuratie
 const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags } = require('discord.js');
-const { Telegraf } = require('telegraf'); // Telegram bot
+const { Telegraf, Markup } = require('telegraf'); // Vergeet niet Markup toe te voegen hier!
 const { handleBotLogic, resetMemory } = require('./botLogic');
 const { getBitcoinPrice } = require('./crypto');
 
