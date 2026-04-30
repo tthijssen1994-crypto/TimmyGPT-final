@@ -103,25 +103,25 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.customId === 'price') {
       const price = await getBitcoinPrice();
 
-      return interaction.reply({
-        embeds: [
-          new EmbedBuilder()
-            .setTitle("💰 Bitcoin prijs")
-            .setDescription(price)
-            .setColor(0xF7931A)
-        ],
-        ephemeral: true
-      });
+return interaction.reply({
+  embeds: [
+    new EmbedBuilder()
+      .setTitle("💰 Bitcoin prijs")
+      .setDescription(price)
+      .setColor(0xF7931A)
+  ],
+  flags: ['EPHEMERAL'] // Dit is de nieuwe manier om een bericht als 'ephemeral' te markeren
+});
     }
 
     // 🧠 RESET
     if (interaction.customId === 'reset') {
       await resetMemory(user);
 
-      return interaction.reply({
-        content: "🧠 Geheugen gereset!",
-        ephemeral: true
-      });
+return interaction.reply({
+  content: "🧠 Geheugen gereset!",
+  flags: ['EPHEMERAL']
+});
     }
 
     // ❓ HELP
