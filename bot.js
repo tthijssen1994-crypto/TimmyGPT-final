@@ -77,14 +77,30 @@ async function streamAI(promptMessages, onChunk) {
 // ===== TELEGRAM AUTO RECONNECT =====
 let telegram = null;
 
-function startTelegram() {
+async function startTelegram() {
   if (!TELEGRAM_TOKEN) {
     console.log("⚠️ Telegram uitgeschakeld (geen token)");
     return;
   }
 
   try {
-    telegram = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
+    // 🧹 Force cleanup oude sessions
+    const axios = require("axios");
+
+    await axios.get(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/deleteWebhook`);
+
+    console.log("🧹 Oude Telegram sessies opgeschoond");
+
+    // 🚀 Start bot (maar 1x!)
+    telegram = new TelegramBot(TELEGRAM_TOKEN, {
+      polling: {
+        autoStart: true,
+        interval: 1000,
+        params: {
+          timeout: 10
+        }
+      }
+    });
 
     console.log("📱 Telegram bot gestart");
 
@@ -125,11 +141,10 @@ function startTelegram() {
     telegram.on("polling_error", (err) => {
       console.error("Telegram polling error:", err.message);
 
-      // 🔁 Auto restart na fout
-      setTimeout(() => {
-        console.log("🔄 Telegram reconnect...");
-        startTelegram();
-      }, 5000);
+      // ❌ GEEN reconnect loop meer!
+      if (err.message.includes("409")) {
+        console.log("⚠️ Meerdere bot instanties actief → fix Railway scaling");
+      }
     });
 
   } catch (err) {
