@@ -1,4 +1,5 @@
 require('dotenv').config();
+require('./bot');
 
 // alles direct in 1 file laden
 require('./bot');
