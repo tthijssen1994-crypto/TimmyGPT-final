@@ -1,12 +1,7 @@
 {
-<<<<<<< HEAD
   "name": "timmygpt",
   "version": "1.0.0",
-  "description": "Advanced AI Discord + Telegram bot",
-=======
-  "name": "timmygpt-final",
-  "version": "1.0.0",
->>>>>>> 2693a24e97374fd5e4f6261bdbdcad95b1f6b326
+  "description": "AI Discord + Telegram bot",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
