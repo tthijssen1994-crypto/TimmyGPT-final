@@ -9,6 +9,7 @@ const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 const OPENAI_KEY = process.env.OPENAI_API_KEY;
 
+// 🔥 FIX: juiste kanaal naam (of haal check weg)
 const AI_CHANNEL = "ai-chat";
 
 // ===== CLIENTS =====
@@ -35,7 +36,7 @@ function detectLanguage(text) {
   if (lower.match(/\b(hola|como|que|por)\b/)) return "es";
   if (lower.match(/\b(bonjour|comment|quoi|pourquoi)\b/)) return "fr";
 
-  return "nl"; // default
+  return "nl";
 }
 
 // ===== SYSTEM PROMPT =====
@@ -74,7 +75,7 @@ async function streamAI(promptMessages, onChunk) {
   }
 }
 
-// ===== TELEGRAM AUTO RECONNECT =====
+// ===== TELEGRAM =====
 let telegram = null;
 
 async function startTelegram() {
@@ -84,22 +85,13 @@ async function startTelegram() {
   }
 
   try {
-    // 🧹 Force cleanup oude sessions
     const axios = require("axios");
-
     await axios.get(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/deleteWebhook`);
 
     console.log("🧹 Oude Telegram sessies opgeschoond");
 
-    // 🚀 Start bot (maar 1x!)
     telegram = new TelegramBot(TELEGRAM_TOKEN, {
-      polling: {
-        autoStart: true,
-        interval: 1000,
-        params: {
-          timeout: 10
-        }
-      }
+      polling: true,
     });
 
     console.log("📱 Telegram bot gestart");
@@ -138,15 +130,6 @@ async function startTelegram() {
       }
     });
 
-    telegram.on("polling_error", (err) => {
-      console.error("Telegram polling error:", err.message);
-
-      // ❌ GEEN reconnect loop meer!
-      if (err.message.includes("409")) {
-        console.log("⚠️ Meerdere bot instanties actief → fix Railway scaling");
-      }
-    });
-
   } catch (err) {
     console.error("Telegram start error:", err);
   }
@@ -160,7 +143,11 @@ discord.once("clientReady", () => {
 discord.on("messageCreate", async (msg) => {
   try {
     if (msg.author.bot) return;
-    if (msg.channel.name !== chatgpt-kanaal) return;
+
+    // ✅ FIX: correcte kanaal check
+    if (msg.channel.name !== AI_CHANNEL) return;
+
+    await msg.channel.sendTyping();
 
     let full = "";
     const messages = buildPrompt(msg.content);
