@@ -160,7 +160,7 @@ discord.once("clientReady", () => {
 discord.on("messageCreate", async (msg) => {
   try {
     if (msg.author.bot) return;
-    if (msg.channel.name !== AI_CHANNEL) return;
+    if (msg.channel.name !== chatgpt-kanaal) return;
 
     let full = "";
     const messages = buildPrompt(msg.content);
