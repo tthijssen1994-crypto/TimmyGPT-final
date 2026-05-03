@@ -1,7 +1,7 @@
 require('dotenv').config();
-const { startBot } = require('./core/bot');
 
-startBot();
+// alles direct in 1 file laden
+require('./bot');
 
 // Discord bot configuratie
 const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags } = require('discord.js');
