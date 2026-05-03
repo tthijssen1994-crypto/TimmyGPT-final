@@ -30,7 +30,7 @@ return true;
 }
 
 client.once('ready', () => {
-console.log("🚀 BOT PRO ONLINE");
+console.log("BOT ONLINE");
 });
 
 client.on('messageCreate', async (msg) => {
@@ -42,56 +42,50 @@ const user = msg.author.id;
 console.log("INPUT:", text);
 
 if (!allow(user)) {
-return msg.reply("⏳ Rustig...");
+return msg.reply("Slow down");
 }
 
 // CACHE
 if (cache.has(text)) {
-return msg.reply("⚡ " + cache.get(text));
+return msg.reply("Cached: " + cache.get(text));
 }
 
 // ======================
-// 💰 CRYPTO (MULTI API)
+// CRYPTO (MULTI API)
 // ======================
 if (text.includes("bitcoin") || text.includes("btc")) {
 
 ```
-// API 1 - CoinGecko
 try {
   const res = await axios.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd");
   const price = res.data.bitcoin.usd;
 
-  const reply = `💰 BTC: $${price} (CoinGecko)`;
+  const reply = "BTC: $" + price + " (CoinGecko)";
   cache.set(text, reply);
   return msg.reply(reply);
 
-} catch (e1) {
-  console.log("CoinGecko fail");
+} catch {
 
-  // API 2 - Binance
   try {
     const res = await axios.get("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT");
     const price = res.data.price;
 
-    const reply = `💰 BTC: $${price} (Binance)`;
+    const reply = "BTC: $" + price + " (Binance)";
     cache.set(text, reply);
     return msg.reply(reply);
 
-  } catch (e2) {
-    console.log("Binance fail");
+  } catch {
 
-    // API 3 - Coinbase
     try {
       const res = await axios.get("https://api.coinbase.com/v2/prices/spot?currency=USD");
       const price = res.data.data.amount;
 
-      const reply = `💰 BTC: $${price} (Coinbase)`;
+      const reply = "BTC: $" + price + " (Coinbase)";
       cache.set(text, reply);
       return msg.reply(reply);
 
-    } catch (e3) {
-      console.error("CRYPTO FAIL ALL");
-      return msg.reply("❌ Alle crypto API's down");
+    } catch {
+      return msg.reply("All crypto APIs failed");
     }
   }
 }
@@ -100,44 +94,38 @@ try {
 }
 
 // ======================
-// 🌦️ WEER (MULTI API)
+// WEATHER (MULTI API)
 // ======================
 if (text.includes("weer")) {
 const city = text.split("weer in")[1]?.trim() || "Amsterdam";
 
 ```
-// API 1 - wttr.in
 try {
-  const res = await axios.get(`https://wttr.in/${city}?format=3`);
+  const res = await axios.get("https://wttr.in/" + city + "?format=3");
 
-  const reply = `🌦️ ${res.data} (wttr.in)`;
+  const reply = "Weather: " + res.data;
   cache.set(text, reply);
   return msg.reply(reply);
 
-} catch (e1) {
-  console.log("wttr fail");
+} catch {
 
-  // API 2 - Open-Meteo
   try {
-    const geo = await axios.get(`https://geocoding-api.open-meteo.com/v1/search?name=${city}`);
+    const geo = await axios.get("https://geocoding-api.open-meteo.com/v1/search?name=" + city);
     const lat = geo.data.results[0].latitude;
     const lon = geo.data.results[0].longitude;
 
     const weather = await axios.get(
-      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`
+      "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&current_weather=true"
     );
 
     const temp = weather.data.current_weather.temperature;
 
-    const reply = `🌦️ ${city}: ${temp}°C (Open-Meteo)`;
+    const reply = "Weather " + city + ": " + temp + "C";
     cache.set(text, reply);
     return msg.reply(reply);
 
-  } catch (e2) {
-    console.log("open-meteo fail");
-
-    // API 3 - fallback simpel
-    return msg.reply("❌ Weer API's down");
+  } catch {
+    return msg.reply("Weather APIs failed");
   }
 }
 ```
@@ -145,7 +133,7 @@ try {
 }
 
 // ======================
-// 🔎 SEARCH
+// SEARCH
 // ======================
 if (text.includes("wat is") || text.includes("wie is")) {
 try {
@@ -154,19 +142,19 @@ params: { q: text, format: "json" }
 });
 
 ```
-  const answer = res.data.Abstract || "Geen info gevonden.";
+  const answer = res.data.Abstract || "No info found";
   cache.set(text, answer);
   return msg.reply(answer);
 
 } catch {
-  return msg.reply("❌ Zoek fout");
+  return msg.reply("Search error");
 }
 ```
 
 }
 
 // ======================
-// 🤖 AI
+// AI
 // ======================
 try {
 const ai = await openai.chat.completions.create({
@@ -174,7 +162,7 @@ model: "gpt-4o-mini",
 messages: [
 {
 role: "system",
-content: "Je bent een slimme Discord AI en antwoordt kort en duidelijk in het Nederlands."
+content: "You are a smart Discord AI. Answer short and clear."
 },
 {
 role: "user",
@@ -185,7 +173,7 @@ max_tokens: 200
 });
 
 ```
-let reply = ai.choices[0].message.content || "⚠️ Geen antwoord";
+let reply = ai.choices[0].message.content || "No response";
 
 if (reply.length > 1900) {
   reply = reply.slice(0, 1900);
@@ -198,7 +186,7 @@ return msg.reply(reply);
 
 } catch (err) {
 console.error(err);
-return msg.reply("⚠️ AI fout");
+return msg.reply("AI error");
 }
 });
 
