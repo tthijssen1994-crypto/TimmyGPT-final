@@ -88,72 +88,38 @@ async function getWeather(city) {
 
 // ===== OPENAI STREAM SIM =====
 async function askAI(prompt, message) {
-    const OPENAI_KEY = process.env.OPENAI_API_KEY;
-    if (!OPENAI_KEY) {
-        return message.reply("❌ Geen OpenAI key");
-    }
+    if (!OPENAI_KEY) return "❌ Geen OpenAI key";
 
     try {
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${OPENAI_KEY}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
+        const res = await axios.post(
+            "https://api.openai.com/v1/chat/completions",
+            {
                 model: "gpt-4o-mini",
-                messages: [{ role: "user", content: prompt }],
-                stream: true
-            })
-        });
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-
-        let msg = await message.reply("🤖...");
-        let fullText = "";
-        let buffer = "";
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-
-            const lines = buffer.split("\n");
-            buffer = lines.pop();
-
-            for (const line of lines) {
-                if (!line.startsWith("data:")) continue;
-
-                const json = line.replace("data:", "").trim();
-                if (json === "[DONE]") break;
-
-                try {
-                    const parsed = JSON.parse(json);
-                    const token = parsed.choices?.[0]?.delta?.content;
-
-                    if (token) {
-                        fullText += token;
-
-                        // update elke ~50 chars (voorkomt rate limits)
-                        if (fullText.length % 50 === 0) {
-                            await msg.edit(fullText);
-                        }
-                    }
-
-                } catch (e) {
-                    // ignore parse errors
+                messages: [{ role: "user", content: prompt }]
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${OPENAI_KEY}`,
+                    "Content-Type": "application/json"
                 }
             }
+        );
+
+        let text = res.data.choices[0].message.content;
+
+        // fake streaming edit
+        let sent = await message.reply("🤖...");
+        let current = "";
+
+        for (let i = 0; i < text.length; i += 20) {
+            current += text.slice(i, i + 20);
+            await sent.edit(current);
+            await new Promise(r => setTimeout(r, 50));
         }
 
-        // final update
-        await msg.edit(fullText || "⚠️ Geen antwoord");
-
     } catch (err) {
-        console.error(err);
-        message.reply("❌ Streaming error");
+        console.error(err.message);
+        message.reply("❌ AI error");
     }
 }
 
