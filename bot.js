@@ -1,200 +1,117 @@
-const { Client, GatewayIntentBits, Partials, REST, Routes, SlashCommandBuilder } = require("discord.js");
-const axios = require("axios");
+require("dotenv").config();
+
+const { Client, GatewayIntentBits } = require("discord.js");
+const TelegramBot = require("node-telegram-bot-api");
+const OpenAI = require("openai");
 
 // ===== CONFIG =====
-const TOKEN = process.env.DISCORD_TOKEN;
-const CLIENT_ID = process.env.CLIENT_ID;
-const AUTO_CHANNEL_ID = process.env.AUTO_CHANNEL_ID;
+const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
+const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 const OPENAI_KEY = process.env.OPENAI_API_KEY;
 
-// ===== CLIENT =====
-const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent
-    ],
-    partials: [Partials.Channel]
+const AI_CHANNEL_NAME = "ai-chat"; // Discord kanaal naam
+
+// ===== CLIENTS =====
+const discord = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
 });
 
-// ===== SLASH COMMANDS =====
-const commands = [
-    new SlashCommandBuilder()
-        .setName("ping")
-        .setDescription("Check of bot werkt"),
+const telegram = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
 
-    new SlashCommandBuilder()
-        .setName("crypto")
-        .setDescription("BTC prijs"),
+const openai = new OpenAI({
+  apiKey: OPENAI_KEY,
+});
 
-    new SlashCommandBuilder()
-        .setName("weer")
-        .setDescription("Weer check")
-        .addStringOption(opt =>
-            opt.setName("stad")
-                .setDescription("Welke stad?")
-                .setRequired(true)
-        )
-].map(c => c.toJSON());
+// ===== AI FUNCTION (ECHTE STREAMING) =====
+async function streamAI(prompt, onChunk) {
+  try {
+    const stream = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      stream: true,
+    });
 
-// ===== REGISTER COMMANDS =====
-async function registerCommands() {
-    if (!TOKEN || !CLIENT_ID) {
-        console.log("❌ TOKEN of CLIENT_ID ontbreekt");
-        return;
+    for await (const part of stream) {
+      const text = part.choices[0]?.delta?.content;
+      if (text) onChunk(text);
     }
-
-    try {
-        const rest = new REST({ version: "10" }).setToken(TOKEN);
-        await rest.put(
-            Routes.applicationCommands(CLIENT_ID),
-            { body: commands }
-        );
-        console.log("✅ Slash commands geladen");
-    } catch (err) {
-        console.error("❌ Command error:", err.message);
-    }
+  } catch (err) {
+    console.error("AI ERROR:", err);
+    onChunk("\n❌ AI error");
+  }
 }
 
-// ===== CRYPTO (MULTI API) =====
-async function getBTC() {
-    try {
-        const cg = await axios.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd");
-        return `💰 BTC: $${cg.data.bitcoin.usd} (CoinGecko)`;
-    } catch (e1) {
+// ===== DISCORD =====
+discord.once("clientReady", () => {
+  console.log("🤖 Discord bot online");
+});
+
+discord.on("messageCreate", async (msg) => {
+  try {
+    if (msg.author.bot) return;
+
+    // Alleen reageren in specifiek kanaal
+    if (msg.channel.name !== AI_CHANNEL_NAME) return;
+
+    let reply = await msg.reply("💭 Thinking...");
+    let full = "";
+
+    await streamAI(msg.content, async (chunk) => {
+      full += chunk;
+
+      // Update message elke ~1s
+      if (full.length % 50 === 0) {
         try {
-            const binance = await axios.get("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT");
-            return `💰 BTC: $${parseFloat(binance.data.price).toFixed(2)} (Binance)`;
-        } catch (e2) {
-            return "❌ Crypto API down";
-        }
-    }
-}
+          await reply.edit(full.slice(0, 1900));
+        } catch {}
+      }
+    });
 
-// ===== WEER (MULTI API) =====
-async function getWeather(city) {
-    try {
-        const w1 = await axios.get(`https://wttr.in/${city}?format=j1`);
-        return `🌤️ ${city}: ${w1.data.current_condition[0].temp_C}°C (wttr.in)`;
-    } catch (e1) {
+    await reply.edit(full.slice(0, 1900));
+
+  } catch (err) {
+    console.error("Discord error:", err);
+  }
+});
+
+// ===== TELEGRAM =====
+telegram.on("message", async (msg) => {
+  try {
+    const chatId = msg.chat.id;
+    const text = msg.text;
+
+    if (!text) return;
+
+    let full = "";
+
+    const sent = await telegram.sendMessage(chatId, "💭 Thinking...");
+
+    await streamAI(text, async (chunk) => {
+      full += chunk;
+
+      if (full.length % 50 === 0) {
         try {
-            const w2 = await axios.get(`https://api.open-meteo.com/v1/forecast?latitude=52&longitude=5&current_weather=true`);
-            return `🌤️ ${city}: ${w2.data.current_weather.temperature}°C (Open-Meteo)`;
-        } catch (e2) {
-            return "❌ Weer API down";
-        }
-    }
-}
+          await telegram.editMessageText(full.slice(0, 4000), {
+            chat_id: chatId,
+            message_id: sent.message_id,
+          });
+        } catch {}
+      }
+    });
 
-// ===== OPENAI STREAM SIM =====
-async function askAI(prompt, message) {
-    const OPENAI_KEY = process.env.OPENAI_API_KEY;
-    if (!OPENAI_KEY) {
-        return message.reply("❌ Geen OpenAI key");
-    }
+    await telegram.editMessageText(full.slice(0, 4000), {
+      chat_id: chatId,
+      message_id: sent.message_id,
+    });
 
-    try {
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${OPENAI_KEY}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                model: "gpt-4o-mini",
-                messages: [{ role: "user", content: prompt }],
-                stream: true
-            })
-        });
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-
-        let msg = await message.reply("🤖...");
-        let fullText = "";
-        let buffer = "";
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-
-            const lines = buffer.split("\n");
-            buffer = lines.pop();
-
-            for (const line of lines) {
-                if (!line.startsWith("data:")) continue;
-
-                const json = line.replace("data:", "").trim();
-                if (json === "[DONE]") break;
-
-                try {
-                    const parsed = JSON.parse(json);
-                    const token = parsed.choices?.[0]?.delta?.content;
-
-                    if (token) {
-                        fullText += token;
-
-                        // update elke ~50 chars (voorkomt rate limits)
-                        if (fullText.length % 50 === 0) {
-                            await msg.edit(fullText);
-                        }
-                    }
-
-                } catch (e) {
-                    // ignore parse errors
-                }
-            }
-        }
-
-        // final update
-        await msg.edit(fullText || "⚠️ Geen antwoord");
-
-    } catch (err) {
-        console.error(err);
-        message.reply("❌ Streaming error");
-    }
-}
-
-// ===== READY =====
-client.once("clientReady", async () => {
-    console.log(`🚀 Online als ${client.user.tag}`);
-    await registerCommands();
-});
-
-// ===== SLASH HANDLER =====
-client.on("interactionCreate", async interaction => {
-    if (!interaction.isChatInputCommand()) return;
-
-    try {
-        if (interaction.commandName === "ping") {
-            await interaction.reply("🏓 Pong!");
-        }
-
-        if (interaction.commandName === "crypto") {
-            await interaction.reply(await getBTC());
-        }
-
-        if (interaction.commandName === "weer") {
-            const stad = interaction.options.getString("stad");
-            await interaction.reply(await getWeather(stad));
-        }
-
-    } catch (err) {
-        console.error(err);
-        interaction.reply("❌ Fout");
-    }
-});
-
-// ===== AUTO AI CHANNEL =====
-client.on("messageCreate", async message => {
-    if (message.author.bot) return;
-
-    if (message.channel.id === AUTO_CHANNEL_ID) {
-        await askAI(message.content, message);
-    }
+  } catch (err) {
+    console.error("Telegram error:", err);
+  }
 });
 
 // ===== START =====
-client.login(TOKEN);
+discord.login(DISCORD_TOKEN);
