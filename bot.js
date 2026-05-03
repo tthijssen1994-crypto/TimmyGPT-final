@@ -5,27 +5,6 @@ const client = new Client({
 intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages]
 });
 
-// rate limit
-const users = new Map();
-
-function rateLimit(user) {
-const now = Date.now();
-
-if (!users.has(user)) users.set(user, []);
-
-const timestamps = users.get(user).filter(t => now - t < 10000);
-
-if (timestamps.length >= 5) return false;
-
-timestamps.push(now);
-users.set(user, timestamps);
-
-return true;
-}
-
-// cache
-const cache = new Map();
-
 client.once('ready', () => {
 console.log(`🚀 Online als ${client.user.tag}`);
 });
@@ -33,76 +12,27 @@ console.log(`🚀 Online als ${client.user.tag}`);
 client.on('messageCreate', async (msg) => {
 if (msg.author.bot) return;
 
-const user = msg.author.id;
 const text = msg.content.toLowerCase();
 
-if (!rateLimit(user)) {
-return msg.reply("⏳ Rustig aan...");
-}
-
-// cache
-if (cache.has(text)) {
-return msg.reply("⚡ " + cache.get(text));
-}
-
-// 💰 CRYPTO
-if (text.includes("bitcoin") || text.includes("btc")) {
-try {
+// 💰 bitcoin
+if (text.includes("bitcoin")) {
 const res = await axios.get("https://api.coindesk.com/v1/bpi/currentprice.json");
-const price = res.data.bpi.USD.rate;
-return msg.reply(`💰 Bitcoin prijs: $${price}`);
-} catch (err) {
-console.error(err);
-return msg.reply("❌ Crypto fout");
-}
+return msg.reply(`💰 BTC: $${res.data.bpi.USD.rate}`);
 }
 
-// 🌦️ WEER
+// 🌦️ weer
 if (text.includes("weer")) {
-try {
-const city = text.split("weer in")[1]?.trim() || "Amsterdam";
-const res = await axios.get(`https://wttr.in/${city}?format=3`);
+const res = await axios.get("https://wttr.in/?format=3");
 return msg.reply(`🌦️ ${res.data}`);
-} catch (err) {
-console.error(err);
-return msg.reply("❌ Weer fout");
-}
 }
 
-// 🔎 SEARCH
-if (text.includes("wat is") || text.includes("wie is")) {
-try {
-const res = await axios.get("https://api.duckduckgo.com/", {
-params: { q: text, format: "json", no_html: 1 }
-});
-
-```
-  const answer = res.data.Abstract || "Geen info gevonden.";
-  cache.set(text, answer);
-
-  return msg.reply(answer);
-} catch (err) {
-  console.error(err);
-  return msg.reply("❌ Zoek fout");
-}
-```
-
+// 🔎 search
+if (text.includes("wat is")) {
+return msg.reply("🤖 Simpele bot werkt nu!");
 }
 
-// 🤖 AI fallback
-try {
-const reply = "🤖 AI antwoord op: " + text;
-
-```
-cache.set(text, reply);
-
-return msg.reply(reply);
-```
-
-} catch (err) {
-console.error(err);
-return msg.reply("⚠️ AI fout");
-}
+// fallback
+return msg.reply("👋 Bot werkt!");
 });
 
 client.login(process.env.DISCORD_TOKEN);
