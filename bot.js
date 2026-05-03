@@ -1,11 +1,19 @@
-const { Client, GatewayIntentBits } = require('discord.js');
+
+const { Client, GatewayIntentBits, REST, Routes } = require('discord.js');
 const axios = require('axios');
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
+  ]
 });
 
-const PREFIX = "!";
+const TOKEN = process.env.TOKEN;
+const CLIENT_ID = process.env.CLIENT_ID;
+
+const CHAT_CHANNEL = process.env.CHAT_CHANNEL || null;
 
 // ===== SAFE FETCH =====
 async function safeFetch(url) {
@@ -17,46 +25,49 @@ async function safeFetch(url) {
   }
 }
 
-// ===== CRYPTO (MULTI API) =====
-async function getCrypto() {
-  const cg = await safeFetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd");
-  if (cg && cg.bitcoin) return "BTC: $" + cg.bitcoin.usd + " (CoinGecko)";
+// ===== PLUGIN SYSTEM =====
+const plugins = [];
 
-  const binance = await safeFetch("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT");
-  if (binance && binance.price) return "BTC: $" + parseFloat(binance.price).toFixed(2) + " (Binance)";
-
-  return "Crypto API error";
+function registerPlugin(plugin) {
+  plugins.push(plugin);
 }
 
-// ===== WEATHER (MULTI API) =====
-async function getWeather(city) {
-  const wttr = await safeFetch("https://wttr.in/" + city + "?format=j1");
-  if (wttr && wttr.current_condition) {
-    const w = wttr.current_condition[0];
-    return city + ": " + w.temp_C + "°C, " + w.weatherDesc[0].value;
+// ===== CRYPTO PLUGIN =====
+registerPlugin({
+  name: "crypto",
+  trigger: (msg) => msg.includes("btc") || msg.includes("crypto"),
+  run: async () => {
+    const cg = await safeFetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd");
+    if (cg?.bitcoin) return "BTC: $" + cg.bitcoin.usd + " (CoinGecko)";
+    const binance = await safeFetch("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT");
+    if (binance?.price) return "BTC: $" + parseFloat(binance.price).toFixed(2) + " (Binance)";
+    return "Crypto API error";
   }
+});
 
-  const open = await safeFetch("https://api.open-meteo.com/v1/forecast?latitude=52.37&longitude=4.89&current_weather=true");
-  if (open && open.current_weather) {
-    return city + ": " + open.current_weather.temperature + "°C (Open-Meteo)";
+// ===== WEATHER PLUGIN =====
+registerPlugin({
+  name: "weather",
+  trigger: (msg) => msg.includes("weer") || msg.includes("weather"),
+  run: async (msg) => {
+    const city = msg.split(" ")[1] || "Amsterdam";
+    const wttr = await safeFetch("https://wttr.in/" + city + "?format=j1");
+    if (wttr?.current_condition) {
+      const w = wttr.current_condition[0];
+      return city + ": " + w.temp_C + "°C, " + w.weatherDesc[0].value;
+    }
+    return "Weather API error";
   }
+});
 
-  return "Weather API error";
-}
-
-// ===== AI MOCK =====
-async function getAI(text) {
-  return "AI: " + text;
-}
-
-// ===== STREAMING =====
+// ===== OPENAI STREAM (SIMULATED) =====
 async function stream(message, text) {
-  let msg = await message.reply("...");
   let current = "";
+  const msg = await message.reply("...");
 
   for (let i = 0; i < text.length; i++) {
     current += text[i];
-    if (i % 4 === 0) {
+    if (i % 5 === 0) {
       await msg.edit(current);
       await new Promise(r => setTimeout(r, 15));
     }
@@ -65,49 +76,82 @@ async function stream(message, text) {
   await msg.edit(current);
 }
 
-function startBot() {
-  client.once('ready', () => {
-    console.log("PRO BOT ONLINE");
-  });
+// ===== SLASH COMMANDS =====
+const commands = [
+  {
+    name: "ping",
+    description: "Ping test"
+  },
+  {
+    name: "ai",
+    description: "Ask AI",
+    options: [{
+      name: "text",
+      type: 3,
+      description: "Your question",
+      required: true
+    }]
+  }
+];
 
-  client.on('messageCreate', async (message) => {
-    if (message.author.bot) return;
-    if (!message.content.startsWith(PREFIX)) return;
+const rest = new REST({ version: '10' }).setToken(TOKEN);
 
-    const args = message.content.slice(1).split(" ");
-    const cmd = args[0];
-
-    try {
-      if (cmd === "ping") return message.reply("pong");
-
-      if (cmd === "crypto") {
-        const data = await getCrypto();
-        return message.reply(data);
-      }
-
-      if (cmd === "weer") {
-        const city = args[1] || "Amsterdam";
-        const data = await getWeather(city);
-        return message.reply(data);
-      }
-
-      if (cmd === "ai") {
-        const input = args.slice(1).join(" ");
-        const res = await getAI(input);
-        return stream(message, res);
-      }
-
-      if (cmd === "help") {
-        return message.reply("Commands: !ping !crypto !weer !ai");
-      }
-
-    } catch (err) {
-      console.error(err);
-      message.reply("Error");
-    }
-  });
-
-  client.login(process.env.TOKEN);
+// ===== REGISTER COMMANDS =====
+async function registerCommands() {
+  try {
+    await rest.put(
+      Routes.applicationCommands(CLIENT_ID),
+      { body: commands }
+    );
+    console.log("Slash commands registered");
+  } catch (err) {
+    console.error(err);
+  }
 }
 
-module.exports = { startBot };
+// ===== BOT =====
+client.once('ready', async () => {
+  console.log("V3 BOT ONLINE");
+  await registerCommands();
+});
+
+// ===== MESSAGE AUTO AI =====
+client.on('messageCreate', async (message) => {
+  if (message.author.bot) return;
+
+  const content = message.content.toLowerCase();
+
+  // channel AI mode
+  if (CHAT_CHANNEL && message.channel.id === CHAT_CHANNEL) {
+    return stream(message, "AI antwoord: " + message.content);
+  }
+
+  // plugins auto detect
+  for (const plugin of plugins) {
+    if (plugin.trigger(content)) {
+      try {
+        const result = await plugin.run(content);
+        return message.reply(result);
+      } catch {
+        return message.reply("Plugin error");
+      }
+    }
+  }
+});
+
+// ===== SLASH HANDLER =====
+client.on('interactionCreate', async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
+
+  if (interaction.commandName === "ping") {
+    return interaction.reply("pong");
+  }
+
+  if (interaction.commandName === "ai") {
+    const text = interaction.options.getString("text");
+    await interaction.reply("...");
+    return stream(interaction, "AI: " + text);
+  }
+});
+
+client.login(TOKEN);

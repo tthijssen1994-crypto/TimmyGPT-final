@@ -1,2 +1,2 @@
-const { startBot } = require('./bot');
-startBot();
+
+require('./bot');
