@@ -1,1 +1,2 @@
-require("./bot.js");
+require('dotenv').config();
+require('./bot');
