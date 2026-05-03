@@ -1,1 +1,2 @@
-require('./bot2');
+const { startBot } = require('./bot');
+startBot();

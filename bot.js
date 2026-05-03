@@ -1,143 +1,113 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const axios = require('axios');
-const OpenAI = require("openai");
 
 const client = new Client({
-intents: [
-GatewayIntentBits.Guilds,
-GatewayIntentBits.GuildMessages,
-GatewayIntentBits.MessageContent
-]
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
 
-const openai = new OpenAI({
-apiKey: process.env.OPENAI_API_KEY,
-});
+const PREFIX = "!";
 
-// ⚡ cache
-const cache = new Map();
-
-// 🛡️ rate limit
-const users = new Map();
-function rateLimit(user) {
-const now = Date.now();
-if (!users.has(user)) users.set(user, []);
-const timestamps = users.get(user).filter(t => now - t < 10000);
-if (timestamps.length >= 5) return false;
-timestamps.push(now);
-users.set(user, timestamps);
-return true;
+// ===== SAFE FETCH =====
+async function safeFetch(url) {
+  try {
+    const res = await axios.get(url, { timeout: 5000 });
+    return res.data;
+  } catch {
+    return null;
+  }
 }
 
-client.once('ready', () => {
-console.log(`🚀 PRO BOT ONLINE als ${client.user.tag}`);
-});
+// ===== CRYPTO (MULTI API) =====
+async function getCrypto() {
+  const cg = await safeFetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd");
+  if (cg && cg.bitcoin) return "BTC: $" + cg.bitcoin.usd + " (CoinGecko)";
 
-client.on('messageCreate', async (msg) => {
-if (msg.author.bot) return;
+  const binance = await safeFetch("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT");
+  if (binance && binance.price) return "BTC: $" + parseFloat(binance.price).toFixed(2) + " (Binance)";
 
-const user = msg.author.id;
-const text = msg.content.toLowerCase();
-
-console.log("INPUT:", text);
-
-if (!rateLimit(user)) {
-return msg.reply("⏳ Rustig aan...");
+  return "Crypto API error";
 }
 
-// ⚡ CACHE
-if (cache.has(text)) {
-return msg.reply("⚡ " + cache.get(text));
+// ===== WEATHER (MULTI API) =====
+async function getWeather(city) {
+  const wttr = await safeFetch("https://wttr.in/" + city + "?format=j1");
+  if (wttr && wttr.current_condition) {
+    const w = wttr.current_condition[0];
+    return city + ": " + w.temp_C + "°C, " + w.weatherDesc[0].value;
+  }
+
+  const open = await safeFetch("https://api.open-meteo.com/v1/forecast?latitude=52.37&longitude=4.89&current_weather=true");
+  if (open && open.current_weather) {
+    return city + ": " + open.current_weather.temperature + "°C (Open-Meteo)";
+  }
+
+  return "Weather API error";
 }
 
-// 💰 CRYPTO
-if (text.includes("bitcoin") || text.includes("btc")) {
-try {
-const res = await axios.get("https://api.coindesk.com/v1/bpi/currentprice.json");
-const price = res.data.bpi.USD.rate;
-const reply = `💰 Bitcoin prijs: $${price}`;
-cache.set(text, reply);
-return msg.reply(reply);
-} catch {
-return msg.reply("❌ Crypto fout");
-}
+// ===== AI MOCK =====
+async function getAI(text) {
+  return "AI: " + text;
 }
 
-// 🌦️ WEER
-if (text.includes("weer")) {
-try {
-const city = text.split("weer in")[1]?.trim() || "Amsterdam";
-const res = await axios.get(`https://wttr.in/${city}?format=3`);
-const reply = `🌦️ ${res.data}`;
-cache.set(text, reply);
-return msg.reply(reply);
-} catch {
-return msg.reply("❌ Weer fout");
-}
-}
+// ===== STREAMING =====
+async function stream(message, text) {
+  let msg = await message.reply("...");
+  let current = "";
 
-// 🔎 SEARCH (internet info)
-if (
-text.includes("wat is") ||
-text.includes("wie is") ||
-text.includes("zoek")
-) {
-try {
-const res = await axios.get("https://api.duckduckgo.com/", {
-params: {
-q: text,
-format: "json",
-no_html: 1
-}
-});
+  for (let i = 0; i < text.length; i++) {
+    current += text[i];
+    if (i % 4 === 0) {
+      await msg.edit(current);
+      await new Promise(r => setTimeout(r, 15));
+    }
+  }
 
-```
-  const answer = res.data.Abstract || "Geen duidelijke info gevonden.";
-  cache.set(text, answer);
-  return msg.reply(answer);
-} catch {
-  return msg.reply("❌ Zoek fout");
-}
-```
-
+  await msg.edit(current);
 }
 
-// 🤖 AI (ECHT)
-try {
-const ai = await openai.chat.completions.create({
-model: "gpt-4o-mini",
-messages: [
-{
-role: "system",
-content: "Je bent een slimme AI en antwoordt kort, duidelijk en in het Nederlands."
-},
-{
-role: "user",
-content: text
+function startBot() {
+  client.once('ready', () => {
+    console.log("PRO BOT ONLINE");
+  });
+
+  client.on('messageCreate', async (message) => {
+    if (message.author.bot) return;
+    if (!message.content.startsWith(PREFIX)) return;
+
+    const args = message.content.slice(1).split(" ");
+    const cmd = args[0];
+
+    try {
+      if (cmd === "ping") return message.reply("pong");
+
+      if (cmd === "crypto") {
+        const data = await getCrypto();
+        return message.reply(data);
+      }
+
+      if (cmd === "weer") {
+        const city = args[1] || "Amsterdam";
+        const data = await getWeather(city);
+        return message.reply(data);
+      }
+
+      if (cmd === "ai") {
+        const input = args.slice(1).join(" ");
+        const res = await getAI(input);
+        return stream(message, res);
+      }
+
+      if (cmd === "help") {
+        return message.reply("Commands: !ping !crypto !weer !ai");
+      }
+
+    } catch (err) {
+      console.error(err);
+      message.reply("Error");
+    }
+  });
+
+  client.login(process.env.TOKEN);
 }
-],
-max_tokens: 300,
-temperature: 0.7
-});
 
-```
-let reply = ai.choices[0].message.content;
-
-if (!reply) reply = "⚠️ Geen AI antwoord";
-
-if (reply.length > 1900) {
-  reply = reply.slice(0, 1900);
-}
-
-cache.set(text, reply);
-
-return msg.reply(reply);
-```
-
-} catch (err) {
-console.error(err);
-return msg.reply("⚠️ AI fout");
-}
-});
-
-client.login(process.env.DISCORD_TOKEN);
+module.exports = { startBot };
