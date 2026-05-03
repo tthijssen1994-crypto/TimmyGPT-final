@@ -5,7 +5,7 @@ const client = new Client({
 intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages]
 });
 
-// simpele rate limit
+// rate limit
 const users = new Map();
 
 function rateLimit(user) {
@@ -23,7 +23,7 @@ users.set(user, timestamps);
 return true;
 }
 
-// simpele cache
+// cache
 const cache = new Map();
 
 client.once('ready', () => {
@@ -40,7 +40,7 @@ if (!rateLimit(user)) {
 return msg.reply("⏳ Rustig aan...");
 }
 
-// ⚡ CACHE
+// cache
 if (cache.has(text)) {
 return msg.reply("⚡ " + cache.get(text));
 }
@@ -51,7 +51,8 @@ try {
 const res = await axios.get("https://api.coindesk.com/v1/bpi/currentprice.json");
 const price = res.data.bpi.USD.rate;
 return msg.reply(`💰 Bitcoin prijs: $${price}`);
-} catch {
+} catch (err) {
+console.error(err);
 return msg.reply("❌ Crypto fout");
 }
 }
@@ -62,7 +63,8 @@ try {
 const city = text.split("weer in")[1]?.trim() || "Amsterdam";
 const res = await axios.get(`https://wttr.in/${city}?format=3`);
 return msg.reply(`🌦️ ${res.data}`);
-} catch {
+} catch (err) {
+console.error(err);
 return msg.reply("❌ Weer fout");
 }
 }
@@ -79,14 +81,15 @@ params: { q: text, format: "json", no_html: 1 }
   cache.set(text, answer);
 
   return msg.reply(answer);
-} catch {
+} catch (err) {
+  console.error(err);
   return msg.reply("❌ Zoek fout");
 }
 ```
 
 }
 
-// 🤖 AI (zonder streaming voor stabiliteit)
+// 🤖 AI fallback
 try {
 const reply = "🤖 AI antwoord op: " + text;
 
@@ -96,7 +99,8 @@ cache.set(text, reply);
 return msg.reply(reply);
 ```
 
-} catch {
+} catch (err) {
+console.error(err);
 return msg.reply("⚠️ AI fout");
 }
 });
