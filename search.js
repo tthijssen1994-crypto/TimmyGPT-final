@@ -1,26 +1,27 @@
 const axios = require("axios");
 
-async function searchInternet(query) {
-  try {
-    const res = await axios.get("https://api.duckduckgo.com/", {
-      params: {
-        q: query,
-        format: "json",
-        no_html: 1
-      }
-    });
+module.exports = {
+match: (msg) =>
+msg.includes("zoek") ||
+msg.includes("wat is") ||
+msg.includes("wie is"),
 
-    if (res.data.Abstract) return res.data.Abstract;
-
-    if (res.data.RelatedTopics.length > 0) {
-      return res.data.RelatedTopics[0].Text;
-    }
-
-    return "Geen resultaten gevonden.";
-  } catch (err) {
-    console.error(err);
-    return "Zoeken mislukt.";
-  }
+run: async (msg) => {
+try {
+const res = await axios.get("https://api.duckduckgo.com/", {
+params: {
+q: msg,
+format: "json",
+no_html: 1
 }
+});
 
-module.exports = { searchInternet };
+```
+  return res.data.Abstract || "Geen info gevonden.";
+} catch {
+  return "❌ Zoek fout.";
+}
+```
+
+}
+};

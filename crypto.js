@@ -1,21 +1,19 @@
 const axios = require("axios");
 
-async function getBitcoinPrice() {
-  try {
-    const res = await axios.get(
-      "https://api.coingecko.com/api/v3/simple/price",
-      {
-        params: {
-          ids: "bitcoin",
-          vs_currencies: "eur"
-        }
-      }
-    );
+module.exports = {
+match: (msg) => msg.includes("bitcoin") || msg.includes("btc"),
 
-    return `De huidige Bitcoin prijs is €${res.data.bitcoin.eur}`;
-  } catch (err) {
-    return "Kon de Bitcoin prijs niet ophalen.";
-  }
+run: async () => {
+try {
+const res = await axios.get("https://api.coindesk.com/v1/bpi/currentprice.json");
+const price = res.data.bpi.USD.rate;
+
+```
+  return `💰 Bitcoin prijs: $${price}`;
+} catch {
+  return "❌ Crypto fout.";
 }
+```
 
-module.exports = { getBitcoinPrice };
+}
+};

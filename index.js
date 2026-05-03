@@ -1,3 +1,8 @@
+require('dotenv').config();
+const { startBot } = require('./core/bot');
+
+startBot();
+
 // Discord bot configuratie
 const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags } = require('discord.js');
 const { Telegraf, Markup } = require('telegraf'); // Vergeet niet Markup toe te voegen hier!
