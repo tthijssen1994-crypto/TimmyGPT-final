@@ -8,9 +8,9 @@ const { handleAIStream } = require('./ai');
 const { rateLimit } = require('./rateLimiter');
 
 // plugins
-const crypto = require('../plugins/crypto');
-const weather = require('../plugins/weather');
-const search = require('../plugins/search');
+const crypto = require('./crypto');
+const weather = require('./weather');
+const search = require('./search');
 
 const plugins = [crypto, weather, search];
 
